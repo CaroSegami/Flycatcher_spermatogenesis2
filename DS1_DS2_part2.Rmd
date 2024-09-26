@@ -1,0 +1,1788 @@
+---
+title: "DS1_DS2_part2"
+author: "Caro Segami"
+date: "2024-03-24"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r libraries}
+library(Seurat)
+#library(SeuratDisk)
+#library(SeuratWrappers)
+library(ggplot2)
+library(cowplot)
+library(dplyr)
+library(tidyr)
+library(ggbeeswarm)
+library(data.table)
+library(reshape2)
+library(glmGamPoi)
+```
+
+# Cluster equivalencies and order
+Load the 3 clusterings (without cluster 0) and find equivalent clusters and decide order for the combined pure species clustering for downstream analysis
+
+```{r load}
+
+fl.minus0<-readRDS("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/DS1DS2pureminus0.sct.rds")
+fl.combined.markers<-read.csv("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/pure.markers.csv")
+fl.top100 <- fl.combined.markers %>% group_by(cluster) %>% top_n(n = 100, wt = avg_log2FC)
+fl.top10 <- fl.combined.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
+
+Dimminus01<-DimPlot(fl.minus0, reduction = "umap", label = TRUE)#+NoLegend()
+Dimminus01
+
+cf.minus0.rec<-readRDS("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/cf.minus0.sct.rds")
+cf.markers<-read.csv("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/cf.markers.csv")
+cf.top100 <- cf.markers %>% group_by(cluster) %>% top_n(n = 100, wt = avg_log2FC)
+cf.top10 <- cf.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
+
+Dimminus02<-DimPlot(cf.minus0.rec, reduction = "umap", label = TRUE)+NoLegend()
+Dimminus02
+
+
+pf.minus0.rec<-readRDS("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/pf.minus0.sct.rds")
+pf.markers<-read.csv("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/pf.markers.csv")
+pf.top100 <- pf.markers %>% group_by(cluster) %>% top_n(n = 100, wt = avg_log2FC)
+pf.top10 <- pf.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
+
+Dimminus03<-DimPlot(pf.minus0.rec, reduction = "umap", label = TRUE)+NoLegend()
+Dimminus03
+
+
+
+level_order_cf<-c("18","2","9","15","4","8","11","14","16","6","3","12","0","17","7","10","13","1","5")
+levels(cf.minus0.rec)<-level_order_cf
+
+level_order_pf<-c("17","18","16","14","4", "19", "9", "10", "11", "15","12","2","3","13","1","5","6","7","0","8")
+levels(pf.minus0.rec)<-level_order_pf
+
+
+level_order_pure<-c("20","19","12","5","17","9","8","14","15","7","11","2","18","4","16","10","1","13","3","0","6")
+levels(fl.minus0)<-level_order_pure
+
+
+library(reshape2)
+library(corrplot)
+
+#fl.top100<-na.omit(fl.top100)
+#cf.top100<-na.omit(cf.top100)
+#pf.top100<-na.omit(pf.top100)
+
+
+#dim(fl.top100)
+#dim(cf.top100)
+#dim(pf.top100)
+
+
+#cfa<-select(cf.top100, X, avg_log2FC, cluster)
+#cfa<-pivot_wider(cfa, names_from ="cluster", values_from ="avg_log2FC")
+
+#pfa<-select(pf.top100, X, avg_log2FC, cluster)
+#pfa<-pivot_wider(pfa, names_from ="cluster", values_from ="avg_log2FC")
+
+#cfb<-cfa
+#pfb<-pfa
+
+#rownames(cfb)=cfb$X
+#rownames(pfb)=pfb$X
+#ds1torder=cfb[,level_order_cf]
+#ds2torder=pfb[,level_order_pf]
+
+#corDs=cor(ds1torder,ds2torder, method = "pearson")
+#corp1<-corrplot(corDs, is.corr = FALSE,method = 'color')
+#corp2<-corrplot(corDs, is.corr = FALSE,method = 'number',number.cex = 0.6) #  number
+
+
+####I think this was my way of doing it.
+#DS1_top500<-DS1 %>% group_by(cluster) %>% top_n(n = 500, wt = value)%>%select(Row.names,cluster)%>%ungroup()
+#DS2_top500<-DS2 %>% group_by(cluster) %>% top_n(n = 500, wt = value)%>%select(Row.names,cluster)%>%ungroup()
+
+#DS1_top500<-DS1_top500%>%select(Row.names)%>%distinct()
+#DS2_top500<-DS2_top500%>%select(Row.names)%>%distinct()
+#top500list<-rbind(DS1_top500,DS2_top500)
+#top500list<-distinct(top500list)
+
+#DS1500<-merge(DS1a,top500list, by.x = "Row.names", by.y = "Row.names", all.x = F,all.y = T)
+#DS2500<-merge(DS2a,top500list, by.x = "Row.names", by.y = "Row.names", all.x = F,all.y = T)
+
+#rownames(DS1500)=DS1500$Row.names
+#rownames(DS2500)=DS2500$Row.names
+#DS1500=DS1500[,ds1order]
+#DS2500=DS2500[,ds2order]
+
+#corDstop=cor(DS1500,DS2500, method = "pearson")
+#corp3<-corrplot(corDstop, is.corr = FALSE,method = 'color')
+#corp4<-corrplot(corDstop, is.corr = FALSE,method = 'number',number.cex = 0.6) #  number
+
+
+
+########################################Forget all that was for avg expression
+########This is the one I wanted
+
+library(corrplot)
+flmarkers.cfpf<-merge(cf.top100,pf.top100, by.x="gene", by.y="gene")
+#flmarkers200.merged<-merge(fl.top200,fl.top200.DS1, by.x="gene", by.y="gene")
+#roc.merged<-merge(top10_markers_roc, top10_markers_roc_DS1, by.x="Gene_name", by.y="Gene_name")
+#all.merged<-merge(fl.markers, fl.markers.DS1, by.x="gene", by.y="gene")
+
+corr_plot1<-corrplot(table(DS1=flmarkers.cfpf$cluster.x,DS2=flmarkers.cfpf$cluster.y),is.corr=F,addCoef.col="grey")
+
+level_order_cf<-c("18","15","9","2","8","11","14","16","6","4","3","12","0","17","13","7","10","1","5") #good order translate to velo
+levels(cf.minus0.rec)<-level_order_cf
+
+level_order_pf<-c("16","18","17","14","4","19","11", "10", "15", "9","12","2","3","13","1","5","6","7","0","8") #good order good in  velo
+
+levels(pf.minus0.rec)<-level_order_pf
+
+flmarkers.cfpure<-merge(cf.top100,fl.top100, by.x="gene", by.y="gene")
+corr_plot2<-corrplot(table(DS1=flmarkers.cfpure$cluster.x,DS2=flmarkers.cfpure$cluster.y),is.corr=F,addCoef.col="grey")
+
+flmarkers.pfpure<-merge(pf.top100,fl.top100, by.x="gene", by.y="gene")
+corr_plot3<-corrplot(table(DS1=flmarkers.pfpure$cluster.x,DS2=flmarkers.pfpure$cluster.y),is.corr=F,addCoef.col="grey")
+
+
+flmarkers.minusSOMpure<-merge(minusSOM.top100,fl.top100, by.x="gene", by.y="gene")
+corr_plot4<-corrplot(table(DS1=flmarkers.minusSOMpure$cluster.x,DS2=flmarkers.minusSOMpure$cluster.y),is.corr=F,addCoef.col="grey")
+
+level_order_pure<-c("20","19","17","15","12","5","9","8","14","7","11","2","4","18","16","10","1","13","3","0","6")
+levels(fl.minus0)<-level_order_pure
+
+
+```
+
+## Heatmaps
+
+Heatmaps for cf pf and pure
+
+```{r, echo=FALSE}
+##CF
+cf.top10$cluster<-as.factor(cf.top10$cluster)
+cf.top10$cluster<-factor(cf.top10$cluster, levels = level_order_cf)
+levels(cf.top10$cluster)
+cf.top10 <- arrange(cf.top10, cluster)
+
+all.genes <- rownames(cf.minus0.rec)
+heatmap <- ScaleData(cf.minus0.rec, features = all.genes)
+Heatmap<-DoHeatmap(heatmap, features = cf.top10$gene) + theme(axis.text.y = element_text(size =2))
+Heatmap + scale_fill_gradient2(low = "navy", mid = "white",high = "red") #+NoLegend()
+
+cf.markers%>%group_by(cluster)%>%summarise(n = n())
+
+##PF
+pf.top10$cluster<-as.factor(pf.top10$cluster)
+pf.top10$cluster<-factor(pf.top10$cluster, levels = level_order_pf)
+levels(pf.top10$cluster)
+pf.top10 <- arrange(pf.top10, cluster)
+
+all.genes <- rownames(pf.minus0.rec)
+heatmap <- ScaleData(pf.minus0.rec, features = all.genes)
+Heatmap<-DoHeatmap(heatmap, features = pf.top10$gene) + theme(axis.text.y = element_text(size =2))
+Heatmap + scale_fill_gradient2(low = "navy", mid = "white",high = "red") +NoLegend()
+
+pf.markers%>%group_by(cluster)%>%summarise(n = n())
+
+##Pure
+fl.top10$cluster<-as.factor(fl.top10$cluster)
+fl.top10$cluster<-factor(fl.top10$cluster, levels = level_order_pure)
+levels(fl.top10$cluster)
+fl.top10 <- arrange(fl.top10, cluster)
+
+all.genes <- rownames(fl.minus0)
+heatmap <- ScaleData(fl.minus0, features = all.genes)
+Heatmap<-DoHeatmap(heatmap, features = fl.top10$gene) + theme(axis.text.y = element_text(size =2))
+Heatmap + scale_fill_gradient2(low = "navy", mid = "white",high = "red") +NoLegend()
+
+m<-fl.combined.markers%>%group_by(cluster)%>%summarise(n = n())
+m
+
+```
+
+
+```{r more_plots}
+p3=DimPlot(fl.minus0, reduction = "umap", split.by = "individual")
+p3
+
+df=data.frame(cluster=Idents(fl.minus0), dataset=fl.minus0$"individual")
+per <- df  %>%  group_by(cluster) %>% 
+  dplyr::count(dataset) %>% 
+  ungroup()
+#write.csv(per, file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/number_cells_perclus_ind.csv")
+p<-ggplot(data=per, aes(x=cluster, y=n, fill=dataset)) +
+  geom_bar(position="fill", stat="identity")+ labs(y = "Percent") +  scale_y_continuous(labels = scales::percent) + scale_fill_grey(start = 0.3,
+  end = 0.8) + theme_classic()
+p
+
+pp<-ggplot(data=per, aes(x=cluster, y=n, fill=dataset)) +
+  geom_bar( stat="identity")+ labs(y = "Count") + scale_fill_grey(start = 0.2,
+  end = 0.6) + theme_classic()
+
+pp
+
+plot_grid(p, nrow = 3)
+```
+
+
+# ROC markers for pure
+
+```{r rock markers}
+
+c17.m<- FindMarkers(fl.minus0, ident.1 = 17, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df1<-head(c17.m, n=10)
+df1$cluster<-17
+df1 <- tibble::rownames_to_column(df1, "Gene_name")
+c17.m$cluster<-17
+c17.m<-tibble::rownames_to_column(c17.m, "Gene_name")
+
+c3.m<- FindMarkers(fl.minus0, ident.1 = 3, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df2<-head(c3.m, n=10)
+df2$cluster<-3
+df2 <- tibble::rownames_to_column(df2, "Gene_name")
+c3.m$cluster<-3
+c3.m<-tibble::rownames_to_column(c3.m, "Gene_name")
+
+c13.m<- FindMarkers(fl.minus0, ident.1 = 13, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df3<-head(c13.m, n=10)
+df3$cluster<-13
+df3 <- tibble::rownames_to_column(df3, "Gene_name")
+c13.m$cluster<-13
+c13.m<-tibble::rownames_to_column(c13.m, "Gene_name")
+
+c9.m<- FindMarkers(fl.minus0, ident.1 = 9, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df4<-head(c9.m, n=10)
+df4$cluster<-9
+df4 <- tibble::rownames_to_column(df4, "Gene_name")
+c9.m$cluster<-9
+c9.m<-tibble::rownames_to_column(c9.m, "Gene_name")
+
+c16.m<- FindMarkers(fl.minus0, ident.1 = 16, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df5<-head(c16.m, n=10)
+df5$cluster<-16
+df5 <- tibble::rownames_to_column(df5, "Gene_name")
+c16.m$cluster<-16
+c16.m<-tibble::rownames_to_column(c16.m, "Gene_name")
+
+c6.m<- FindMarkers(fl.minus0, ident.1 = 6, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df6<-head(c6.m, n=10)
+df6$cluster<-6
+df6 <- tibble::rownames_to_column(df6, "Gene_name")
+c6.m$cluster<-6
+c6.m<-tibble::rownames_to_column(c6.m, "Gene_name")
+
+c2.m<- FindMarkers(fl.minus0, ident.1 = 2, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df7<-head(c2.m, n=10)
+df7$cluster<-2
+df7 <- tibble::rownames_to_column(df7, "Gene_name")
+c2.m$cluster<-2
+c2.m<-tibble::rownames_to_column(c2.m, "Gene_name")
+
+c15.m<- FindMarkers(fl.minus0, ident.1 = 15, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df8<-head(c15.m, n=10)
+df8$cluster<-15
+df8 <- tibble::rownames_to_column(df8, "Gene_name")
+c15.m$cluster<-15
+c15.m<-tibble::rownames_to_column(c15.m, "Gene_name")
+
+c8.m<- FindMarkers(fl.minus0, ident.1 = 8, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df9<-head(c8.m, n=10) 
+df9$cluster<-8
+df9 <- tibble::rownames_to_column(df9, "Gene_name")
+c8.m$cluster<-8
+c8.m<-tibble::rownames_to_column(c8.m, "Gene_name")
+
+c0.m<- FindMarkers(fl.minus0, ident.1 = 0, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df10<-head(c0.m, n=10)
+df10$cluster<-0
+df10 <- tibble::rownames_to_column(df10, "Gene_name")
+c0.m$cluster<-0
+c0.m<-tibble::rownames_to_column(c0.m, "Gene_name")
+
+c14.m<- FindMarkers(fl.minus0, ident.1 = 14, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df11<-head(c14.m, n=10)
+df11$cluster<-14
+df11 <- tibble::rownames_to_column(df11, "Gene_name")
+c14.m$cluster<-14
+c14.m<-tibble::rownames_to_column(c14.m, "Gene_name")
+
+c1.m<- FindMarkers(fl.minus0, ident.1 = 1, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df12<-head(c1.m, n=10)
+df12$cluster<-1
+df12 <- tibble::rownames_to_column(df12, "Gene_name")
+c1.m$cluster<-1
+c1.m<-tibble::rownames_to_column(c1.m, "Gene_name")
+
+c5.m<- FindMarkers(fl.minus0, ident.1 = 5, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df13<-head(c5.m, n=10)
+df13$cluster<-5
+df13 <- tibble::rownames_to_column(df13, "Gene_name")
+c5.m$cluster<-5
+c5.m<-tibble::rownames_to_column(c5.m, "Gene_name")
+
+c12.m<- FindMarkers(fl.minus0, ident.1 = 12, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df14<-head(c12.m, n=10)
+df14$cluster<-12
+df14 <- tibble::rownames_to_column(df14, "Gene_name")
+c12.m$cluster<-12
+c12.m<-tibble::rownames_to_column(c12.m, "Gene_name")
+
+c4.m<- FindMarkers(fl.minus0, ident.1 = 4, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df15<-head(c4.m, n=10)
+df15$cluster<-4
+df15 <- tibble::rownames_to_column(df15, "Gene_name")
+c4.m$cluster<-4
+c4.m<-tibble::rownames_to_column(c4.m, "Gene_name")
+
+c11.m<- FindMarkers(fl.minus0, ident.1 = 11, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df16<-head(c11.m, n=10)
+df16$cluster<-11
+df16 <- tibble::rownames_to_column(df16, "Gene_name")
+c11.m$cluster<-11
+c11.m<-tibble::rownames_to_column(c11.m, "Gene_name")
+
+c10.m<- FindMarkers(fl.minus0, ident.1 = 10, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df17<-head(c10.m, n=10)
+df17$cluster<-10
+df17 <- tibble::rownames_to_column(df17, "Gene_name")
+c10.m$cluster<-10
+c10.m<-tibble::rownames_to_column(c10.m, "Gene_name")
+
+c7.m<- FindMarkers(fl.minus0, ident.1 = 7, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df18<-head(c7.m, n=10)
+df18$cluster<-7
+df18 <- tibble::rownames_to_column(df18, "Gene_name")
+c7.m$cluster<-7
+c7.m<-tibble::rownames_to_column(c7.m, "Gene_name")
+
+c18.m<- FindMarkers(fl.minus0, ident.1 = 18, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df18<-head(c18.m, n=10)
+df18$cluster<-18
+df18 <- tibble::rownames_to_column(df18, "Gene_name")
+c18.m$cluster<-18
+c18.m<-tibble::rownames_to_column(c18.m, "Gene_name")
+
+c19.m<- FindMarkers(fl.minus0, ident.1 = 19, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df19<-head(c19.m, n=10)
+df19$cluster<-19
+df19 <- tibble::rownames_to_column(df19, "Gene_name")
+c19.m$cluster<-19
+c19.m<-tibble::rownames_to_column(c19.m, "Gene_name")
+
+c20.m<- FindMarkers(fl.minus0, ident.1 = 20, logfc.threshold = 0.25, test.use = "roc", only.pos = TRUE)
+df20<-head(c20.m, n=10)
+df20$cluster<-20
+df20 <- tibble::rownames_to_column(df20, "Gene_name")
+c20.m$cluster<-20
+c20.m<-tibble::rownames_to_column(c20.m, "Gene_name")
+top10_markers_roc<-bind_rows(df1,df2,df3,df4,df5,df6,df7,df8,df9,df10,df11,df12,
+                        df13,df14,df15,df16,df17,df18,df19,df20)
+#write.csv(top10_markers_roc,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/top10markers_roc_pure.csv")
+
+All_rocmarkers<-bind_rows(c0.m,c1.m,c2.m,c3.m,c4.m,c5.m,c6.m,c7.m,c8.m,c9.m,c10.m,c11.m,c12.m,c13.m,c14.m,c15.m,c16.m,c17.m,c18.m,c19.m,c20.m)
+#write.csv(All_rocmarkers,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/All_rocmarkers_pure.csv")
+All_rocmarkers<-read.csv(file="/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/All_rocmarkers_pure.csv",sep=",")
+
+rep_markers<-filter(All_rocmarkers, myAUC>0.85)
+top10_rep<-rep_markers%>%group_by(cluster)%>%top_n(10,myAUC)
+top2_rep<-rep_markers%>%group_by(cluster)%>%top_n(2,myAUC)
+
+bm<-top2_rep
+
+bm$cluster<-as.factor(bm$cluster)
+bm$cluster<-factor(bm$cluster, levels = level_order_pure)
+levels(bm$cluster)
+bm <- arrange(bm, cluster)
+
+
+bm<-bm%>%ungroup(cluster)%>%distinct(Gene_name)
+
+bestmarkers<-DotPlot(fl.minus0, features = bm$Gene_name, cols = c("blue","red"), dot.scale = 8) + RotatedAxis()
+bestmarkers + NoLegend()
+
+```
+
+
+```{r prep_for_DE}
+samples_name<-fl.minus0@meta.data$individual
+samples_name<-as.data.frame(samples_name)
+s2<-samples_name%>%distinct(samples_name)
+
+samples_name$samples_name[samples_name$samples_name=="Bird1_Bird1"]<-"PF"
+samples_name$samples_name[samples_name$samples_name=="Bird2_Bird2"]<-"CF"
+samples_name$samples_name[samples_name$samples_name=="Bird3_Bird3"]<-"PF"
+samples_name$samples_name[samples_name$samples_name=="BBird4_Bird4"]<-"PF"
+samples_name$samples_name[samples_name$samples_name=="Bird5_Bird5"]<-"CF"
+samples_name$samples_name[samples_name$samples_name=="Bird8_Bird8"]<-"CF"
+samples_name$samples_name[samples_name$samples_name=="CF1_CF1_2019"]<-"CF"
+samples_name$samples_name[samples_name$samples_name=="PF1_PF1_2019"]<-"PF"
+samples_name$samples_name[samples_name$samples_name=="PF2_HY1PF2_2019"]<-"PF"
+
+fl.combined.sct_sp<-AddMetaData(fl.minus0,samples_name$samples_name, col.name = "species") #use this to compare species
+##from now on new db name!
+
+###Load more info on genes
+positions<-read.table("/Users/carosegami/Downloads/full.genes.on.fAlb15.chromPos_strict.from_gtf.bed", sep = "\t")
+genes <- read.table("/Users/carosegami/Dropbox/RNA seq/filtered_matrixes/filtered_feature_bc_matrix_CF1/features.tsv.gz", stringsAsFactors = FALSE)
+genes<-genes%>%select(V1,V2)%>%distinct(V2, .keep_all = T)
+
+
+
+####
+##Add ensembl id and cut significance
+fl.markers<-merge(fl.combined.markers,genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+fl.markers.signif<-filter(fl.markers,p_val_adj<0.05)
+#write.csv(fl.markers.signif,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/fl.markers-pure.signif.csv")
+```
+
+##DE analysis between cf and pf
+
+
+```{r DE_analysis}
+######Find deviating genes #use sp or spPFs
+
+fl.combined.sct_sp$celltype.species<-paste(Idents(fl.combined.sct_sp), fl.combined.sct_sp$species, sep = "_")
+fl.combined.sct_sp$celltype <- Idents(fl.combined.sct_sp)
+Idents(fl.combined.sct_sp) <- "celltype.species"
+matrixNorm2 <- LogNormalize(fl.combined.sct_sp@assays$RNA@counts) #this because deseq2 uses the RNA counts
+fl.combined.sct_sp@assays$RNA@data<-matrixNorm2
+
+
+####Now DE cluster per cluster
+clusdiffresponse_0_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "0_CF", ident.2 = "0_PF", assay = "RNA")
+clusdiffresponse_1_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "1_CF", ident.2 = "1_PF", assay = "RNA")
+clusdiffresponse_2_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "2_CF", ident.2 = "2_PF", assay = "RNA")
+clusdiffresponse_3_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "3_CF", ident.2 = "3_PF", assay = "RNA")
+clusdiffresponse_4_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "4_CF", ident.2 = "4_PF", assay = "RNA")
+clusdiffresponse_5_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "5_CF", ident.2 = "5_PF", assay = "RNA")
+clusdiffresponse_6_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "6_CF", ident.2 = "6_PF", assay = "RNA")
+clusdiffresponse_7_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "7_CF", ident.2 = "7_PF", assay = "RNA")
+clusdiffresponse_8_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "8_CF", ident.2 = "8_PF", assay = "RNA")
+clusdiffresponse_9_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "9_CF", ident.2 = "9_PF", assay = "RNA")
+clusdiffresponse_10_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "10_CF", ident.2 = "10_PF", assay = "RNA")
+clusdiffresponse_11_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "11_CF", ident.2 = "11_PF", assay = "RNA")
+clusdiffresponse_12_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "12_CF", ident.2 = "12_PF", assay = "RNA")
+clusdiffresponse_13_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "13_CF", ident.2 = "13_PF", assay = "RNA")
+clusdiffresponse_14_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "14_CF", ident.2 = "14_PF", assay = "RNA")
+clusdiffresponse_15_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "15_CF", ident.2 = "15_PF", assay = "RNA")
+clusdiffresponse_16_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "16_CF", ident.2 = "16_PF", assay = "RNA")
+clusdiffresponse_17_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "17_CF", ident.2 = "17_PF", assay = "RNA")
+clusdiffresponse_18_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "18_CF", ident.2 = "18_PF", assay = "RNA")
+clusdiffresponse_19_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "19_CF", ident.2 = "19_PF", assay = "RNA") #didn’t work
+clusdiffresponse_20_wilcox <- FindMarkers(fl.combined.sct_sp, ident.1 = "20_CF", ident.2 = "20_PF", assay = "RNA") #didn't work
+
+clusdiffresponse_0_wilcox$genes<- rownames(clusdiffresponse_0_wilcox)
+clusdiffresponse_1_wilcox$genes <- rownames(clusdiffresponse_1_wilcox)
+clusdiffresponse_2_wilcox$genes<- rownames(clusdiffresponse_2_wilcox)
+clusdiffresponse_3_wilcox$genes <- rownames(clusdiffresponse_3_wilcox)
+clusdiffresponse_4_wilcox$genes<- rownames(clusdiffresponse_4_wilcox)
+clusdiffresponse_5_wilcox$genes <- rownames(clusdiffresponse_5_wilcox)
+clusdiffresponse_6_wilcox$genes<- rownames(clusdiffresponse_6_wilcox)
+clusdiffresponse_7_wilcox$genes <- rownames(clusdiffresponse_7_wilcox)
+clusdiffresponse_8_wilcox$genes<- rownames(clusdiffresponse_8_wilcox)
+clusdiffresponse_9_wilcox$genes <- rownames(clusdiffresponse_9_wilcox)
+clusdiffresponse_10_wilcox$genes<- rownames(clusdiffresponse_10_wilcox)
+clusdiffresponse_11_wilcox$genes <- rownames(clusdiffresponse_11_wilcox)
+clusdiffresponse_12_wilcox$genes<- rownames(clusdiffresponse_12_wilcox)
+clusdiffresponse_13_wilcox$genes <- rownames(clusdiffresponse_13_wilcox)
+clusdiffresponse_14_wilcox$genes<- rownames(clusdiffresponse_14_wilcox)
+clusdiffresponse_15_wilcox$genes <- rownames(clusdiffresponse_15_wilcox)
+clusdiffresponse_16_wilcox$genes<- rownames(clusdiffresponse_16_wilcox)
+clusdiffresponse_17_wilcox$genes <- rownames(clusdiffresponse_17_wilcox)
+clusdiffresponse_18_wilcox$genes <- rownames(clusdiffresponse_18_wilcox)
+clusdiffresponse_19_wilcox$genes <- rownames(clusdiffresponse_19_wilcox)
+clusdiffresponse_20_wilcox$genes <- rownames(clusdiffresponse_20_wilcox)
+
+
+clusdiffresponse_0_wilcox$cluster<- 0
+clusdiffresponse_1_wilcox$cluster<- 1
+clusdiffresponse_2_wilcox$cluster<- 2
+clusdiffresponse_3_wilcox$cluster<- 3
+clusdiffresponse_4_wilcox$cluster<- 4
+clusdiffresponse_5_wilcox$cluster<- 5
+clusdiffresponse_6_wilcox$cluster<- 6
+clusdiffresponse_7_wilcox$cluster<- 7
+clusdiffresponse_8_wilcox$cluster<- 8
+clusdiffresponse_9_wilcox$cluster<- 9
+clusdiffresponse_10_wilcox$cluster<- 10
+clusdiffresponse_11_wilcox$cluster<- 11
+clusdiffresponse_12_wilcox$cluster<- 12
+clusdiffresponse_13_wilcox$cluster<- 13
+clusdiffresponse_14_wilcox$cluster<- 14
+clusdiffresponse_15_wilcox$cluster<- 15
+clusdiffresponse_16_wilcox$cluster<- 16
+clusdiffresponse_17_wilcox$cluster<- 17
+clusdiffresponse_18_wilcox$cluster<- 18
+clusdiffresponse_19_wilcox$cluster<- 19
+clusdiffresponse_20_wilcox$cluster<- 20
+
+
+clusdiffresponse_wilcox<-bind_rows(clusdiffresponse_0_wilcox,clusdiffresponse_1_wilcox,clusdiffresponse_2_wilcox,
+                                   clusdiffresponse_3_wilcox,clusdiffresponse_4_wilcox,clusdiffresponse_5_wilcox,
+                                   clusdiffresponse_6_wilcox,clusdiffresponse_7_wilcox,clusdiffresponse_8_wilcox,
+                                   clusdiffresponse_9_wilcox,clusdiffresponse_10_wilcox,
+                                   clusdiffresponse_11_wilcox,clusdiffresponse_12_wilcox,
+                                   clusdiffresponse_13_wilcox,clusdiffresponse_14_wilcox,
+                                   clusdiffresponse_15_wilcox,clusdiffresponse_16_wilcox,
+                                   clusdiffresponse_17_wilcox,clusdiffresponse_18_wilcox,
+                                   clusdiffresponse_19_wilcox,clusdiffresponse_20_wilcox)
+
+clusdiffresponse_wilcox$abs_avg_log2FC<-abs(clusdiffresponse_wilcox$avg_log2FC)
+clusdiffresponse_wilcox<-merge(clusdiffresponse_wilcox,genes,by.x = "genes", by.y = "V2", 
+                            all.x = T, all.y = F)
+clusdiffresponse_wilcox<-na.omit(clusdiffresponse_wilcox)
+pos<-positions%>%distinct(V4, .keep_all = T)
+
+clusdiffresponse_wilcox<-merge(clusdiffresponse_wilcox,pos, by.x = "V1", by.y = "V4", 
+                            all.x = T, all.y = F)
+
+clusdiffresponse_wilcox$Z<-"A"
+clusdiffresponse_wilcox$Z[clusdiffresponse_wilcox$V1.y=="ChrZ"]<-"Z"
+clusdiffresponse_wilcox[is.na(clusdiffresponse_wilcox)] <- 0
+clusdiffresponse_wilcox$Z[clusdiffresponse_wilcox$V1.y=="0"]<-"MT-NA"
+
+```
+
+#Plots
+
+Now plot DE mean and se and proportions
+```{r plotDE}
+
+clusdiffresponse_wilcox_adj<-filter(clusdiffresponse_wilcox, p_val_adj<0.05)
+#write.csv(clusdiffresponse_wilcox_adj,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/DEwilcox_cfpf_significant.csv")
+
+clusdiffresponse_wilcox_adj<-read.csv(file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/DEwilcox_cfpf_significant.csv")
+
+Diff_genes_GO<-distinct(clusdiffresponse_wilcox_adj, V1)
+#write.csv(Diff_genes_GO, file="/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/list_allDEids.csv")
+
+Diff_genes_GO<-read.csv("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/list_allDEids.csv")
+
+##default method
+wilcoxadj_diff21<-ggplot(clusdiffresponse_wilcox_adj, aes(x= factor(cluster, level = level_order_pure ), y= avg_log2FC, colour=Z )) + stat_summary(size=0.8)+geom_quasirandom(alpha=1/30)
+wilcoxadj_diff22<-ggplot(clusdiffresponse_wilcox_adj, aes(x= factor(cluster, level = level_order_pure ), y= avg_log2FC)) + stat_summary(size=1)
+wilcoxadj_diff_plots22<- plot_grid(wilcoxadj_diff21, wilcoxadj_diff22)
+wilcoxadj_diff_plots22
+wilcoxadj_diff33<-ggplot(clusdiffresponse_wilcox_adj, aes(x= factor(cluster, level = level_order_pure ), y= abs_avg_log2FC, colour=Z)) + stat_summary(size=0.5)+geom_quasirandom(alpha=1/5)
+wilcoxadj_diff33
+Zwilcoxadj_diff34<-ggplot(clusdiffresponse_wilcox_adj, aes(x= factor(cluster), y= abs_avg_log2FC)) + stat_summary(size=1)
+
+#Filter out MT and genes with no known position
+clusdiffresponse_wilcox_adj_noMT<-filter(clusdiffresponse_wilcox_adj,V1.y!="0")
+wilcoxadj_diff35<-ggplot(clusdiffresponse_wilcox_adj_noMT, aes(x= factor(cluster, level = level_order_pure ), y= abs_avg_log2FC, colour=Z)) + stat_summary(size=0.5)+geom_quasirandom(alpha=1/5)+
+  scale_color_manual(values = c("#4a3f1c","#f3b712"))+theme_classic()+
+  #NoLegend()+
+  ylab("Absolute log2 fold-change")+
+  xlab("Cluster")
+wilcoxadj_diff35 ### cluster 20 is not showing because there's no significant DE genes too few cells
+
+
+#############Plot proportions
+
+propDE<-clusdiffresponse_wilcox_adj_noMT%>%group_by(cluster)%>%summarise(n = n())
+propDE_Z<-clusdiffresponse_wilcox_adj_noMT%>%group_by(cluster,Z)%>%summarise(n = n())
+num_wilcoxgenes<-clusdiffresponse_wilcox%>%group_by(cluster,Z)%>%summarise(n=n())
+num_wilcoxgenes<-filter(num_wilcoxgenes,Z!="MT-NA")
+
+totalgenes<-c("3688","3688","4941","4941","8225","8225","7230","7230","6899","6899",
+              "6829","6829","6346","6346","6585","6585","6908","6908","6448","6448",
+              "7398","7398","5712","5712","5912","5912","7352","7352","6424","6424",
+              "7119","7119","5945","5945","5665","5665","5860","5860","5503","5503",
+              "5606","5606")
+  
+#totalgenes<-c("2152","2152","754","754","1169","1169","1157","1157","762","762","872","872","1325","1325","733","733",
+#"553","553","1818","1818","1756","1756","618","618","539","539","546","546","1105","1105","565","565",
+#"771","771","548","548","1033","1033","694","694")
+
+stage<-c("somatic","somatic","somatic","somatic","somatic","somatic","somatic","somatic",
+         "somatic","somatic","somatic","somatic",
+         "spermatogonia","spermatogonia","spermatogonia","spermatogonia",
+         "meiosis","meiosis","meiosis","meiosis","meiosis","meiosis","meiosis","meiosis",
+         "meiosis","meiosis","meiosis","meiosis","meiosis","meiosis",
+         "spermatid","spermatid","spermatid","spermatid","spermatid","spermatid",
+         "spermatid","spermatid","spermatid","spermatid","spermatid","spermatid")
+
+prop_DEgenes<-as.data.frame(stage)
+
+cluster<-c("20","20","19","19","17","17","15","15","12","12","5","5","9","9","8","8",
+           "14","14","7","7","11","11","2","2","4","4","18","18","16","16","10","10",
+           "1","1","13","13","3","3","0","0","6","6")
+
+prop_DEgenes$cluster<-cluster
+
+chromosome<-c("A","Z","A","Z","A","Z","A","Z","A","Z","A","Z","A","Z","A","Z","A","Z",
+              "A","Z","A","Z","A","Z","A","Z","A","Z","A","Z","A","Z","A","Z","A","Z",
+              "A","Z","A","Z","A","Z")
+
+prop_DEgenes$chromosome<-chromosome
+
+nDE<-c("0","0","1","0","3","0","2","0","4","0","36","1","4","0","33","4","1","0","46","3",
+       "82","2","66","4","77","7","87","6","2","2","345","19","273","19","21","2","194","14",
+       "369","26","146","10")
+
+prop_DEgenes$nDE<-as.numeric(nDE)
+prop_DEgenes$total_genes<-as.numeric(totalgenes)
+
+
+DEplot1<-ggplot(prop_DEgenes, aes(fill=chromosome, y=nDE, x=factor(cluster,level = level_order_pure) )) +
+geom_bar(position = "dodge", stat = "identity")
+
+DEplot1
+
+prop_DEgenes$prop<-prop_DEgenes$nDE/prop_DEgenes$total_genes
+
+DEplot2<-ggplot(prop_DEgenes, aes(fill=chromosome, y=prop, x=factor(cluster,level = level_order_pure) )) +
+geom_bar(position = "dodge", stat = "identity") + 
+  coord_cartesian(ylim =c(0,1) )
+
+DEplot2
+
+############GLM 
+
+DEtotal<-c("0","0","1","1","3","3","2","2","4","4","37","37","4","4","37","37","1","1",
+           "49","49","84","84","70","70","84","84","93","93","4","4","364","364","292","292",
+           "23","23","208","208","395","395","156","156")
+
+#DEtotal taking into account DE genes that are mapped but need to create another variable for total DEgenes
+
+prop_DEgenes$DEtotal<-as.numeric(DEtotal)
+
+prop_DEgenes$nonDE<-prop_DEgenes$total_genes-prop_DEgenes$DEtotal
+
+
+glm1<-glm(cbind(DEtotal,nonDE)~stage, data = prop_DEgenes, family = "binomial")
+summary(glm1)
+confint(glm1)
+library(emmeans)
+B <- emmeans(glm1, ~stage)
+pairs(B)
+
+########################
+
+prop_DEgenes$ID<-paste(prop_DEgenes$cluster, prop_DEgenes$chromosome, sep = "_")
+num_wilcoxgenes$ID<-paste(num_wilcoxgenes$cluster, num_wilcoxgenes$Z, sep = "_")
+
+DEdeDE<-merge(prop_DEgenes,num_wilcoxgenes, by.x="ID", by.y="ID", all=T)
+#n is the total number of wilcox genes examined for A and Z
+
+DEdeDE$prop2<-as.numeric(DEdeDE$nDE/DEdeDE$n)
+
+DEplot3<-ggplot(DEdeDE, aes(fill=chromosome, y=prop2, x=factor(cluster.x,level = level_order_pure) )) +
+geom_bar(position = "dodge", stat = "identity") + 
+  coord_cartesian(ylim =c(0,0.15) ) + scale_fill_manual(values = c("#4a3f1c","#f3b712")) +
+  ylab("Proportion of DE genes") + xlab("Cluster") + theme_classic()+ NoLegend()
+
+DEplot3
+
+
+```
+
+```{r phyper}
+#testing underrepresentation
+#phyper(ZDE,totalZ,totalA,totalDE)
+
+
+##Testing overrepresentation
+#phyper(ZDE-1,totalZ,totalA,totalDE, lower.tail = F)
+#Values extracted from DEdeDE table
+
+#cluster 0
+phyper((26-1),250,5253,395, lower.tail = F) #p=0.03397016 *
+#cluster 1
+phyper((19-1),264,5681,292, lower.tail = F) #p=0.05927692
+#cluster 2
+phyper((4-1),253,5459,70, lower.tail = F) #p=0.3758246
+#cluster 3
+phyper((14-1),254,5606,208, lower.tail = F) #p=0.06661497
+#cluster 4
+phyper((7-1),268,5644,84, lower.tail = F) #p=0.08535422
+#cluster 5
+phyper((1-1),302,6527,37, lower.tail = F) #p=0.8132659
+#cluster 6
+phyper((10-1),252,5354,156, lower.tail = F) #p=0.1631256
+#cluster 7
+phyper((3-1),284,6164,49, lower.tail = F) #p=0.3671009
+#cluster 8
+phyper((4-1),293,6292,37, lower.tail = F) #p=0.08030501
+#cluster 9
+phyper((0-1),268,6078,4, lower.tail = F) #p=1
+#cluster 10
+phyper((19-1),313,6806,364, lower.tail = F) #p=0.2496289
+#cluster 11
+phyper((2-1),309,7089,84, lower.tail = F) #p=0.8720357
+#cluster 12
+phyper((0-1),319,6580,4, lower.tail = F) #p=1
+#cluster 13
+phyper((2-1),245,5420,23, lower.tail = F) #p=0.2621515
+#cluster 14 
+phyper((0-1),315,6593,1, lower.tail = F) #p=1
+#cluster 15
+phyper((0-1),315,6915,2, lower.tail = F) #p=1
+#cluster 16 
+phyper((2-1),290,6134,4, lower.tail = F) #p=0.01147068 *
+#cluster 17
+phyper((0-1),374,7851,3, lower.tail = F) #p=1
+#cluster 18 
+phyper((6-1),320,7032,93, lower.tail = F) #p=0.2179638
+#cluster 19
+phyper((0-1),214,4727,1, lower.tail = F) #p=1
+#cluster 20
+phyper((0-1),161,3527,0, lower.tail = F) #can't test p=1
+
+
+
+#P-value correction for multiple comparison
+p<-c(0.03397016,0.05927692,0.3758246,0.06661497,0.08535422,0.8132659,0.1631256,0.3671009,0.08030501,1,0.2496289,0.8720357,1,0.2621515,1,1,0.01147068,1,0.2179638,1,1)
+
+#Trying different methods
+p.adjust(p, method = "bonferroni", 21)
+p.adjust(p, method = "holm", 21) 
+p.adjust(p, method = "hochberg", 21)
+p.adjust(p, method = "hommel", 21)
+p.adjust(p, method = "BH", 21)
+p.adjust(p, method = "BY", 21)
+p.adjust(p, method = "fdr", 21)
+
+```
+
+
+
+#Vulcano plots DE per cluster
+
+```{vulcanoplot2 r}
+
+library(EnhancedVolcano)
+
+# wilcox
+wilcox_0<-EnhancedVolcano(clusdiffresponse_0_wilcox,
+                          lab = clusdiffresponse_0_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 0",subtitle=NULL, pCutoff=0.05, 
+                          FCcutoff = 0.5,ylab = "")
+
+
+wilcox_1<-EnhancedVolcano(clusdiffresponse_1_wilcox,
+                          lab = clusdiffresponse_1_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 1",subtitle=NULL, pCutoff=0.05, 
+                          FCcutoff = 0.5,ylab = "")
+
+wilcox_2<-EnhancedVolcano(clusdiffresponse_2_wilcox,
+                          lab = clusdiffresponse_2_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 2",subtitle=NULL, pCutoff=0.05, 
+                          FCcutoff = 0.5)
+
+wilcox_3<-EnhancedVolcano(clusdiffresponse_3_wilcox,
+                          lab = clusdiffresponse_3_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 3",subtitle=NULL, pCutoff=0.05, 
+                          FCcutoff = 0.5)
+
+wilcox_4<-EnhancedVolcano(clusdiffresponse_4_wilcox,
+                          lab = clusdiffresponse_4_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 4",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5,ylab = "")
+
+wilcox_5<-EnhancedVolcano(clusdiffresponse_5_wilcox,
+                          lab = clusdiffresponse_5_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 5",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5, ylab = "")
+
+wilcox_6<-EnhancedVolcano(clusdiffresponse_6_wilcox,
+                          lab = clusdiffresponse_6_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 6",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5, ylab = "")
+
+wilcox_7<-EnhancedVolcano(clusdiffresponse_7_wilcox,
+                          lab = clusdiffresponse_7_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 7",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5,ylab = "")
+
+wilcox_8<-EnhancedVolcano(clusdiffresponse_8_wilcox,
+                          lab = clusdiffresponse_8_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 8",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5, ylab = "")
+
+wilcox_9<-EnhancedVolcano(clusdiffresponse_9_wilcox,
+                          lab = clusdiffresponse_9_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 9",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5)
+
+wilcox_10<-EnhancedVolcano(clusdiffresponse_10_wilcox,
+                          lab = clusdiffresponse_10_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 10",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5)
+
+wilcox_11<-EnhancedVolcano(clusdiffresponse_11_wilcox,
+                          lab = clusdiffresponse_11_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none",title = "Cluster 11",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5, ylab = "")
+
+wilcox_12<-EnhancedVolcano(clusdiffresponse_12_wilcox,
+                          lab = clusdiffresponse_12_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none",title = "Cluster 12",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5, ylab = "")
+
+wilcox_13<-EnhancedVolcano(clusdiffresponse_13_wilcox,
+                          lab = clusdiffresponse_13_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 13",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5,ylab = "")
+
+wilcox_14<-EnhancedVolcano(clusdiffresponse_14_wilcox,
+                          lab = clusdiffresponse_14_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 14",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5,)
+
+wilcox_15<-EnhancedVolcano(clusdiffresponse_15_wilcox,
+                          lab = clusdiffresponse_15_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 15",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5)
+
+wilcox_16<-EnhancedVolcano(clusdiffresponse_16_wilcox,
+                          lab = clusdiffresponse_16_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj',
+                          legendPosition = "none", title = "Cluster 16",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5)
+
+wilcox_17<-EnhancedVolcano(clusdiffresponse_17_wilcox,
+                          lab = clusdiffresponse_17_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj', 
+                          legendPosition = "none", title = "Cluster 17",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5, ylab = "")
+
+wilcox_18<-EnhancedVolcano(clusdiffresponse_18_wilcox,
+                          lab = clusdiffresponse_18_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj', 
+                          legendPosition = "none", title = "Cluster 18",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5, ylab = "")
+
+wilcox_19<-EnhancedVolcano(clusdiffresponse_19_wilcox,
+                          lab = clusdiffresponse_19_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj', 
+                          legendPosition = "none", title = "Cluster 19",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5, ylab = "")
+
+wilcox_20<-EnhancedVolcano(clusdiffresponse_20_wilcox,
+                          lab = clusdiffresponse_20_wilcox$genes,x = 'avg_log2FC',y = 'p_val_adj', 
+                          legendPosition = "none", title = "Cluster 20",subtitle=NULL,pCutoff=0.05, 
+                          FCcutoff = 0.5)
+
+
+plot_grid(wilcox_20,wilcox_19,wilcox_17, wilcox_15, wilcox_12,
+          wilcox_5,labels = c("A","B","C","D","E","F"))
+plot_grid(wilcox_9,wilcox_8,labels = c("A","B"))
+plot_grid(wilcox_14,wilcox_7,wilcox_11, wilcox_2,wilcox_4,wilcox_18,wilcox_16,labels = c("A","B","C","D","E","F","G"))
+plot_grid(wilcox_10,wilcox_1,wilcox_13,wilcox_3,wilcox_0,wilcox_6,labels = c("A","B","C","D","E","F"))
+
+```
+
+
+--->
+#Calculating avg expression without making distinction on species per cluster
+
+```{r averageexp_all}
+
+fl.combined.sct<-fl.minus0
+matrixNorm2 <- LogNormalize(fl.combined.sct@assays$RNA@counts)
+fl.combined.sct@assays$RNA@data<-matrixNorm2
+cluster_0<-subset(fl.combined.sct, idents = "0")
+av_clus0=AverageExpression(object=cluster_0,assays="RNA",layer="data")
+av_clus0<-as.data.frame(av_clus0)
+av_clus0$gene<-rownames(av_clus0)
+avg.clus0.cells<- merge(av_clus0, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus0.cells<-merge(avg.clus0.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus0.cells$cluster<-0
+#avg.clus0.cells$all<-avg.clus0.cells$X0
+avg.clus0.cells<-select(avg.clus0.cells, V1, gene, all, V1.y, cluster)
+
+pZ0<-ggplot(avg.clus0.cells, aes(V1.y, all)) + stat_summary()+theme(axis.text.x = element_text(angle = 90))+
+coord_cartesian(ylim = c(0, 3))
+pZ0 #correct on graph of ppt
+
+cluster_1<-subset(fl.combined.sct, idents = "1")
+av_clus1=AverageExpression(object=cluster_1,assays="RNA",layer="data")
+av_clus1<-as.data.frame(av_clus1)
+av_clus1$gene<-rownames(av_clus1)
+avg.clus1.cells<- merge(av_clus1, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus1.cells<-merge(avg.clus1.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus1.cells$cluster<-1
+#avg.clus1.cells$AVG<-avg.clus1.cells$X1
+avg.clus1.cells<-select(avg.clus1.cells, V1, gene, all, V1.y, cluster)
+
+
+
+pZ1<-ggplot(avg.clus1.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ1
+
+
+cluster_2<-subset(fl.combined.sct, idents = "2")
+av_clus2=AverageExpression(object=cluster_2,assays="RNA",slot="data")
+av_clus2<-as.data.frame(av_clus2)
+av_clus2$gene<-rownames(av_clus2)
+avg.clus2.cells<- merge(av_clus2, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus2.cells<-merge(avg.clus2.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus2.cells$cluster<-2
+#avg.clus2.cells$AVG<-avg.clus2.cells$X2
+avg.clus2.cells<-select(avg.clus2.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ2<-ggplot(avg.clus2.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ2
+
+cluster_3<-subset(fl.combined.sct, idents = "3")
+av_clus3=AverageExpression(object=cluster_3,assays="RNA",slot="data")
+av_clus3<-as.data.frame(av_clus3)
+av_clus3$gene<-rownames(av_clus3)
+avg.clus3.cells<- merge(av_clus3, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus3.cells<-merge(avg.clus3.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus3.cells$cluster<-3
+#avg.clus3.cells$AVG<-avg.clus3.cells$X3
+avg.clus3.cells<-select(avg.clus3.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ3<-ggplot(avg.clus3.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ3
+
+cluster_4<-subset(fl.combined.sct, idents = "4")
+av_clus4=AverageExpression(object=cluster_4,assays="RNA",slot="data")
+av_clus4<-as.data.frame(av_clus4)
+av_clus4$gene<-rownames(av_clus4)
+avg.clus4.cells<- merge(av_clus4, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus4.cells<-merge(avg.clus4.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus4.cells$cluster<-4
+#avg.clus4.cells$AVG<-avg.clus4.cells$X4
+avg.clus4.cells<-select(avg.clus4.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ4<-ggplot(avg.clus4.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ4
+
+
+cluster_5<-subset(fl.combined.sct, idents = "5")
+av_clus5=AverageExpression(object=cluster_5,assays="RNA",slot="data")
+av_clus5<-as.data.frame(av_clus5)
+av_clus5$gene<-rownames(av_clus5)
+avg.clus5.cells<- merge(av_clus5, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus5.cells<-merge(avg.clus5.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus5.cells$cluster<-5
+#avg.clus5.cells$AVG<-avg.clus5.cells$X5
+avg.clus5.cells<-select(avg.clus5.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ5<-ggplot(avg.clus5.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ5
+
+cluster_6<-subset(fl.combined.sct, idents = "6")
+av_clus6=AverageExpression(object=cluster_6,assays="RNA",slot="data")
+av_clus6<-as.data.frame(av_clus6)
+av_clus6$gene<-rownames(av_clus6)
+avg.clus6.cells<- merge(av_clus6, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus6.cells<-merge(avg.clus6.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus6.cells$cluster<-6
+#avg.clus6.cells$AVG<-avg.clus6.cells$X6
+avg.clus6.cells<-select(avg.clus6.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ6<-ggplot(avg.clus6.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ6
+
+cluster_7<-subset(fl.combined.sct, idents = "7")
+av_clus7=AverageExpression(object=cluster_7,assays="RNA",slot="data")
+av_clus7<-as.data.frame(av_clus7)
+av_clus7$gene<-rownames(av_clus7)
+avg.clus7.cells<- merge(av_clus7, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus7.cells<-merge(avg.clus7.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus7.cells$cluster<-7
+#avg.clus7.cells$AVG<-avg.clus7.cells$X7
+avg.clus7.cells<-select(avg.clus7.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ7<-ggplot(avg.clus7.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ7
+
+cluster_8<-subset(fl.combined.sct, idents = "8")
+av_clus8=AverageExpression(object=cluster_8,assays="RNA",slot="data")
+av_clus8<-as.data.frame(av_clus8)
+av_clus8$gene<-rownames(av_clus8)
+avg.clus8.cells<- merge(av_clus8, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus8.cells<-merge(avg.clus8.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus8.cells$cluster<-8
+#avg.clus8.cells$AVG<-avg.clus8.cells$X8
+avg.clus8.cells<-select(avg.clus8.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ8<-ggplot(avg.clus8.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ8
+
+cluster_9<-subset(fl.combined.sct, idents = "9")
+av_clus9=AverageExpression(object=cluster_9,assays="RNA",slot="data")
+av_clus9<-as.data.frame(av_clus9)
+av_clus9$gene<-rownames(av_clus9)
+avg.clus9.cells<- merge(av_clus9, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus9.cells<-merge(avg.clus9.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus9.cells$cluster<-9
+#avg.clus9.cells$AVG<-avg.clus9.cells$X9
+avg.clus9.cells<-select(avg.clus9.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ9<-ggplot(avg.clus9.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ9
+
+cluster_10<-subset(fl.combined.sct, idents = "10")
+av_clus10=AverageExpression(object=cluster_10,assays="RNA",slot="data")
+av_clus10<-as.data.frame(av_clus10)
+av_clus10$gene<-rownames(av_clus10)
+avg.clus10.cells<- merge(av_clus10, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus10.cells<-merge(avg.clus10.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus10.cells$cluster<-10
+#avg.clus10.cells$AVG<-avg.clus10.cells$X10
+avg.clus10.cells<-select(avg.clus10.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ10<-ggplot(avg.clus10.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ10
+
+cluster_11<-subset(fl.combined.sct, idents = "11")
+av_clus11=AverageExpression(object=cluster_11,assays="RNA",slot="data")
+av_clus11<-as.data.frame(av_clus11)
+av_clus11$gene<-rownames(av_clus11)
+avg.clus11.cells<- merge(av_clus11, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus11.cells<-merge(avg.clus11.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus11.cells$cluster<-11
+#avg.clus11.cells$AVG<-avg.clus11.cells$X11
+avg.clus11.cells<-select(avg.clus11.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ11<-ggplot(avg.clus11.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ11
+
+cluster_12<-subset(fl.combined.sct, idents = "12")
+av_clus12=AverageExpression(object=cluster_12,assays="RNA",slot="data")
+av_clus12<-as.data.frame(av_clus12)
+av_clus12$gene<-rownames(av_clus12)
+avg.clus12.cells<- merge(av_clus12, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus12.cells<-merge(avg.clus12.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus12.cells$cluster<-12
+#avg.clus12.cells$AVG<-avg.clus12.cells$X12
+avg.clus12.cells<-select(avg.clus12.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ12<-ggplot(avg.clus12.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ12
+
+cluster_13<-subset(fl.combined.sct, idents = "13")
+av_clus13=AverageExpression(object=cluster_13,assays="RNA",slot="data")
+av_clus13<-as.data.frame(av_clus13)
+av_clus13$gene<-rownames(av_clus13)
+avg.clus13.cells<- merge(av_clus13, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus13.cells<-merge(avg.clus13.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus13.cells$cluster<-13
+#avg.clus13.cells$AVG<-avg.clus13.cells$X13
+avg.clus13.cells<-select(avg.clus13.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ13<-ggplot(avg.clus13.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ13
+
+cluster_14<-subset(fl.combined.sct, idents = "14")
+av_clus14=AverageExpression(object=cluster_14,assays="RNA",slot="data")
+av_clus14<-as.data.frame(av_clus14)
+av_clus14$gene<-rownames(av_clus14)
+avg.clus14.cells<- merge(av_clus14, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus14.cells<-merge(avg.clus14.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus14.cells$cluster<-14
+#avg.clus14.cells$AVG<-avg.clus14.cells$X14
+avg.clus14.cells<-select(avg.clus14.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ14<-ggplot(avg.clus14.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ14
+
+cluster_15<-subset(fl.combined.sct, idents = "15")
+av_clus15=AverageExpression(object=cluster_15,assays="RNA",slot="data")
+av_clus15<-as.data.frame(av_clus15)
+av_clus15$gene<-rownames(av_clus15)
+avg.clus15.cells<- merge(av_clus15, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus15.cells<-merge(avg.clus15.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus15.cells$cluster<-15
+#avg.clus15.cells$AVG<-avg.clus15.cells$X15
+avg.clus15.cells<-select(avg.clus15.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ15<-ggplot(avg.clus15.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ15
+
+cluster_16<-subset(fl.combined.sct, idents = "16")
+av_clus16=AverageExpression(object=cluster_16,assays="RNA",slot="data")
+av_clus16<-as.data.frame(av_clus16)
+av_clus16$gene<-rownames(av_clus16)
+avg.clus16.cells<- merge(av_clus16, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus16.cells<-merge(avg.clus16.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus16.cells$cluster<-16
+#avg.clus16.cells$AVG<-avg.clus16.cells$X16
+avg.clus16.cells<-select(avg.clus16.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ16<-ggplot(avg.clus16.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ16
+
+cluster_17<-subset(fl.combined.sct, idents = "17")
+av_clus17=AverageExpression(object=cluster_17,assays="RNA",slot="data")
+av_clus17<-as.data.frame(av_clus17)
+av_clus17$gene<-rownames(av_clus17)
+avg.clus17.cells<- merge(av_clus17, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus17.cells<-merge(avg.clus17.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus17.cells$cluster<-17
+#avg.clus17.cells$AVG<-avg.clus17.cells$X17
+avg.clus17.cells<-select(avg.clus17.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ17<-ggplot(avg.clus17.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ17
+
+cluster_18<-subset(fl.combined.sct, idents = "18")
+av_clus18=AverageExpression(object=cluster_18,assays="RNA",slot="data")
+av_clus18<-as.data.frame(av_clus18)
+av_clus18$gene<-rownames(av_clus18)
+avg.clus18.cells<- merge(av_clus18, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus18.cells<-merge(avg.clus18.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus18.cells$cluster<-18
+#avg.clus17.cells$AVG<-avg.clus17.cells$X17
+avg.clus18.cells<-select(avg.clus18.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ18<-ggplot(avg.clus18.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ18
+
+cluster_19<-subset(fl.combined.sct, idents = "19")
+av_clus19=AverageExpression(object=cluster_19,assays="RNA",slot="data")
+av_clus19<-as.data.frame(av_clus19)
+av_clus19$gene<-rownames(av_clus19)
+avg.clus19.cells<- merge(av_clus19, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus19.cells<-merge(avg.clus19.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus19.cells$cluster<-19
+#avg.clus17.cells$AVG<-avg.clus17.cells$X17
+avg.clus19.cells<-select(avg.clus19.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ19<-ggplot(avg.clus19.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ19
+
+
+cluster_20<-subset(fl.combined.sct, idents = "20")
+av_clus20=AverageExpression(object=cluster_20,assays="RNA",slot="data")
+av_clus20<-as.data.frame(av_clus20)
+av_clus20$gene<-rownames(av_clus20)
+avg.clus20.cells<- merge(av_clus20, genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
+avg.clus20.cells<-merge(avg.clus20.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus20.cells$cluster<-20
+#avg.clus17.cells$AVG<-avg.clus17.cells$X17
+avg.clus20.cells<-select(avg.clus20.cells, V1, gene, all, V1.y, cluster)
+
+
+pZ20<-ggplot(avg.clus20.cells, aes(V1.y, all)) + stat_summary()+coord_cartesian(ylim = c(0, 3))+theme(axis.text.x = element_text(angle = 90))
+pZ20
+#pZ20<-plot_grid(pZ18,pZ3,pZ14,pZ9,pZ12,pZ10,pZ15,pZ7,pZ2,pZ11,pZ13,pZ4,pZ17,pZ1,pZ6,pZ8,pZ0,pZ16,pZ5)
+#pZ19
+
+
+avg.cells.all2<-bind_rows(avg.clus0.cells,avg.clus1.cells,avg.clus2.cells,avg.clus3.cells,
+                          avg.clus4.cells,
+                         avg.clus5.cells,avg.clus6.cells,avg.clus7.cells,avg.clus8.cells,
+                         avg.clus9.cells,
+                         avg.clus10.cells,avg.clus11.cells,avg.clus12.cells,avg.clus13.cells,
+                         avg.clus14.cells,
+                         avg.clus15.cells,avg.clus16.cells,avg.clus17.cells,avg.clus18.cells,
+                         avg.clus19.cells,avg.clus20.cells)
+
+avg.cells.Z2<-filter(avg.cells.all2, V1.y=="ChrZ")
+
+
+#aes(x= factor(cluster.x, level=level_order), y = dn_ds, fill = Z.x)
+#Avg. expression of Z genes in all chromosomes in timeline
+plot.avg.Zall<-ggplot(avg.cells.Z2, aes(x=factor(cluster, level=level_order_pure), all)) + stat_summary()+geom_quasirandom(alpha=1/50)+
+  coord_cartesian(ylim = c(xlim = c(0,1)))
+plot.avg.Zall
+
+
+####################################################
+
+
+avg.cells.all2$Z<-avg.cells.all2$V1.y
+
+avg.cells.all2$Z<-"A"
+avg.cells.all2$Z[avg.cells.all2$V1.y=="ChrZ"]<-"Z"
+
+#write.csv(avg.cells.all2,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/avg_exppure.csv")
+
+avg.cells.all2noNA<-na.omit(avg.cells.all2)
+
+avg.cells.all2noNA$Z<-as.factor(avg.cells.all2noNA$Z)
+
+avg.cells.all2noNA_F<-filter(avg.cells.all2noNA, all>0.01)
+
+avg.cells.more0<-filter(avg.cells.all2noNA, all>0)
+
+avg.top500<- avg.cells.all2noNA %>% group_by(cluster) %>% top_n(n = 500, wt = all)
+#write.csv(avg.cells.all2,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/avg_top500pure.csv")
+
+Zavg.top500<- filter(avg.top500, Z=="Z")
+
+avg.top1000<- avg.cells.all2noNA%>%group_by(cluster)%>%top_n(n=1000,wt=all)
+#write.csv(avg.cells.all2,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/avg_top1000.csv")
+
+###Zplot of top 500
+
+plot.avg.Ztop500<-ggplot(Zavg.top500, aes(x=factor(cluster, level=level_order_pure), all)) + stat_summary()+geom_quasirandom(alpha=1/5)
+plot.avg.Ztop500
+
+summary<-avg.cells.all2noNA_F %>% group_by( Z, cluster) %>% summarise(quantiles = quantile(all, c(0.25, 0.75)), mean= mean(all), sd = sd(all))
+
+summaryT <- avg.cells.all2noNA_F %>%
+  group_by(Z, cluster) %>%
+  reframe(quantiles = list(quantile(all, c(0.25, 0.75))), mean = mean(all), sd = sd(all)) ##New way of doing but i prefer old way
+
+summary2<-avg.cells.all2noNA %>% group_by( Z, cluster) %>% summarise(quantiles = quantile(all, c(0.25, 0.75)), mean= mean(all), sd = sd(all))
+
+summary3<-avg.cells.more0%>% group_by(Z,cluster)%>% summarise(quantiles = quantile(all, c(0.25,0.75)), mean=mean(all), sd=sd(all))
+
+#plot of mean expr per cluster A vs Z. avg.cells.all2noNA_F for filtered AVG>0.01
+plotZA<-ggplot(avg.cells.all2noNA, aes(x= factor(cluster, level = level_order_pure ), y= all, colour=Z )) + stat_summary(size=0.8) #+geom_quasirandom(alpha=1/5)
+plotZA
+
+plotAVGall<-ggplot(avg.cells.all2noNA, aes(x= factor(cluster, level = level_order_pure ), y= all)) + stat_summary(size=0.8) #+geom_quasirandom(alpha=1/5)
+plotAVGall
+
+plotAVGall_top<-ggplot(avg.top500, aes(x= factor(cluster, level = level_order_pure ), y= all)) + stat_summary(size=0.8) #+geom_quasirandom(alpha=1/5)
+plotAVGall_top
+
+plot_topAZ<-ggplot(avg.top500, aes(x= factor(cluster, level = level_order_pure ), y= all, colour=Z )) + stat_summary(size=0.8) #+geom_quasirandom(alpha=1/15) + coord_cartesian(ylim = c(0,30))
+plot_topAZ
+
+numbers<-avg.top500%>%group_by(cluster,Z)%>%summarise(n = n())
+number2<-avg.cells.more0%>%group_by(cluster,Z)%>%summarise(n=n())
+number3<-avg.cells.all2noNA_F%>%group_by(cluster,Z)%>%summarise(n=n())
+number4<-avg.cells.all2noNA%>%group_by(cluster,Z)%>%summarise(n=n())
+
+
+plotZA_median<-ggplot(avg.cells.all2noNA, aes(x= factor(cluster, level = level_order_pure ), y= all, colour=Z )) + stat_summary(fun="median",size=0.5)
+plotZA_median
+
+
+totalgen<-c("13630","590","13630","590","13630","590","13630","590","13630","590",
+            "13630","590","13630","590","13630","590","13630","590","13630","590",
+            "13630","590","13630","590","13630","590","13630","590","13630","590",
+            "13630","590","13630","590","13630","590","13630","590","13630","590",
+            "13630","590")
+
+number2$tot_gen<-as.numeric(totalgen)
+number3$tot_gen<-as.numeric(totalgen)
+try<-number2$n
+number2$try<-as.numeric(try)
+
+newdb<-try
+newdb<-as.data.frame(newdb)
+newdb$totalgen<-as.numeric(totalgen)
+newdb$prop<-newdb$newdb/newdb$totalgen
+newdb$clus<-number2$cluster
+newdb$chr<-number2$Z
+newdb$n0.01<-as.numeric(number3$n)
+newdb$prop2<-newdb$n0.01/newdb$totalgen
+newdb$top500<-numbers$n
+newdb$prop500<-newdb$top500/newdb$totalgen
+
+#####Plot proportion of A and Z genes per cluster
+
+#all genes >0
+Prop1<-ggplot(newdb, aes(fill=chr, y=prop, x=factor(clus,level = level_order_pure) )) +
+geom_bar(position = "dodge", stat = "identity") + 
+  coord_cartesian(ylim =c(0,0.8) )
+
+Prop1
+
+Prop2<-ggplot(newdb, aes(fill=chr, y=prop2, x=factor(clus,level = level_order_pure) )) +
+geom_bar(position = "dodge", stat = "identity") + 
+  coord_cartesian(ylim =c(0,0.8) ) + ylab("Proportion of expressed genes") +
+  xlab("Cluster") + scale_fill_manual(values = c("#4a3f1c","#f3b712"))+theme_classic()+ NoLegend()
+
+Prop2
+
+Prop3<-ggplot(newdb, aes(fill=chr, y=prop500, x=factor(clus,level = level_order_pure) )) +
+geom_bar(position = "dodge", stat = "identity") + 
+  coord_cartesian(ylim =c(0,0.065)) + ylab("") + xlab("Cluster") +
+  scale_fill_manual(values = c("#4a3f1c","#f3b712"))+theme_classic()#+ NoLegend()
+
+Prop3
+
+plot_grid(Prop2, Prop3, labels = c("A","B"))
+
+
+```
+
+
+```{r bootstrap_graphs}
+
+###Here Marie will put the awesome code with multiple for loops to perform bootstrap resampling for the average expression graphs.
+library(data.table)
+library(reshape2)
+
+##Plots sepparating Z & A
+m = data.frame(t(as.matrix(fl.combined.sct@assays$RNA@counts)))
+sumcell=apply(m,1,sum)
+m1=m/sumcell
+m1$id= as.factor(as.vector(fl.combined.sct$seurat_clusters))
+av4 = m1  %>% 
+group_by(id) %>%
+summarise(across(everything(), mean))
+av4 = data.frame(t(av4))
+names(av4)=paste0("",av4["id",])
+av4=av4[-1,]
+
+
+
+avg.clus.cells<- merge(av4, genes, by.x = 0, by.y = "V2", all.x = T, all.y = F)
+avg.clus.cells<-distinct(avg.clus.cells, Row.names, .keep_all = T)
+avg.clus.cells<-merge(avg.clus.cells, positions, by.x = "V1", by.y = "V4", all.x = T, all.y = F)
+avg.clus.cells<-distinct(avg.clus.cells, Row.names, .keep_all = T)
+avg.clus.cells<-na.omit(avg.clus.cells)
+avg.clus.cells<-select(avg.clus.cells, V1, Row.names, "0","1","2","3","4","5","6","7","8","9","10",
+                      "11","12","13","14","15","16","17","18","19","20",V1.y)
+
+avg.clus.cells2 <- melt(setDT(avg.clus.cells), id.vars = c("V1","Row.names","V1.y"), variable.name = "cluster")
+#write.csv(avg.clus.cells2,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/avgexp_all_a.csv")
+ 
+avg.clus.cells2$chr="A"
+avg.clus.cells2$chr[avg.clus.cells2$V1.y=="ChrZ"]="Z"
+avg.clus.cells2<-avg.clus.cells2[avg.clus.cells2$V1.y!="ChrFal34"&avg.clus.cells2$V1.y!="ChrLGE22",]
+avg.clus.cells2$value<-as.numeric(avg.clus.cells2$value)
+longdfexp<-avg.clus.cells2
+longdfexp$value<-longdfexp$value*10000
+###
+#
+#
+#
+#
+#
+longdfexp_top500<- longdfexp %>% group_by(cluster) %>% top_n(n = 500, wt = value)
+#write.csv(longdfexp_top500,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/Top500_expressed.csv")
+longdfexp_more0<- longdfexp %>% filter(value > 0) 
+
+#bootstraping
+l=split(longdfexp_more0,longdfexp_more0$cluster)
+corel=lapply(names(l),function(n){
+  x=l[[n]]
+  my.df <- data.frame(exp=x$value,chr=x$chr)
+  #my.df <- my.df[!is.infinite(rowSums(my.df[,1:2])), ]
+  # compute true values of mean(dn)/mean(ds)
+  trueexp_mean=tapply(my.df$exp,my.df$chr,mean)
+  my.dfA <- my.df[my.df$chr=="A",]
+  my.dfZ <- my.df[my.df$chr=="Z",]
+  cat(n,"\n")
+  # compute boostraped values
+    sampdf=lapply(1:1000,function(i){
+     sZ=sample(nrow(my.dfZ),replace=T);
+    sA=sample(nrow(my.dfA),replace=T);
+    my.dfsA= my.dfA[sA,];
+    my.dfsZ= my.dfZ[sZ,];
+     sampleexp_mean=c(mean(my.dfsA$exp),mean(my.dfsZ$exp))
+     return(list(sampleexp_mean))
+    });
+  # take true values and quantiles of bootstraped values
+  # boostrap values are made on the same gene sampling for mean and medians
+  tm=data.frame(t(data.frame(lapply(sampdf,function(x){x[[1]]}))))
+  pourc_EMean=apply(tm,2,function(x){quantile(x,probs=c(0.025,0.975))})
+   pourc_EMean=rbind(pourc_EMean,true_emean=trueexp_mean)
+  return(list(pourc_EMean))
+  })
+corel_exp=lapply(corel,function(x){x[[1]]})
+table_expr=data.frame(corel_exp)
+table_expr["cluster",]=rep(names(l),each=2)
+table_expr["chr",]=rep(c("A","Z"),length(names(l)))
+table_expr=data.frame(t(table_expr))
+table_expr[,1]=as.numeric(table_expr[,1])
+table_expr[,2]=as.numeric(table_expr[,2])
+table_expr[,3]=as.numeric(table_expr[,3])
+
+### for ggplot figure
+dodge <- position_dodge(width=0.5)
+g_more0=ggplot(table_expr, aes(x=factor(cluster, level=level_order_pure), y=true_emean, color=chr)) +
+    geom_errorbar(aes(ymin=X2.5., ymax=X97.5.), width=0,position=dodge, size=1) +
+    geom_point(position=dodge, size=3)+
+    ylab("Average Expression")+
+  xlab("Cluster")+theme_classic()+NoLegend()+theme(text = element_text(size=12))+
+  scale_color_manual(values = c("#4a3f1c","#f3b712"))
+g_more0
+
+g_top500
+
+plot_grid(g_more0,g_top500,Prop2,Prop3, labels = c("A","B","C","D"))
+Fig5<-plot_grid(g_top500,Prop3, labels = c("A","B"))
+Fig5
+
+```
+
+
+#Enrichment of Zgenes expressed
+```{r enrichment_clusters}
+
+##Testing overrepresentation  
+#phyper(ZDE-1,totalZ,totalA,totalDE, lower.tail = F)
+
+#Top500
+#Cluster 0
+phyper((18-1),590,13630,500, lower.tail = F) # p=0.7661754
+#Cluster 1
+phyper((22-1),590,13630,500, lower.tail = F) # p=0.4192847
+#Cluster 2
+phyper((21-1),590,13630,500, lower.tail = F) # p=0.5093431
+#cluster 3
+phyper((19-1),590,13630,500, lower.tail = F) # p=0.687296
+#cluster 4
+phyper((22-1),590,13630,500, lower.tail = F) # p=0.4192847
+#cluster 5
+phyper((28-1),590,13630,500, lower.tail = F) # p=0.06618954
+#cluster 6
+phyper((20-1),590,13630,500, lower.tail = F) # p=0.6002477
+#cluster 7
+phyper((23-1),590,13630,500, lower.tail = F) # p=0.3344532
+#cluster 8
+phyper((33-1),590,13630,500, lower.tail = F) # p=0.005821254**
+#cluster 9
+phyper((30-1),590,13630,500, lower.tail = F) # p=0.0275343*
+#cluster 10
+phyper((20-1),590,13630,500, lower.tail = F) # p=0.6002477
+#cluster 11
+phyper((23-1),590,13630,500, lower.tail = F) # p=0.3344532
+#cluster 12
+phyper((27-1),590,13630,500, lower.tail = F) # p=0.09773867*
+#cluster 13
+phyper((23-1),590,13630,500, lower.tail = F) # p=0.3344532
+#cluster 14
+phyper((25-1),590,13630,500, lower.tail = F) # p=0.193094
+#cluster 15
+phyper((21-1),590,13630,500, lower.tail = F) # p=0.5093431
+#cluster 16
+phyper((26-1),590,13630,500, lower.tail = F) # p=0.1396615
+#cluster 17
+phyper((22-1),590,13630,500, lower.tail = F) # p=0.4192847
+#cluster 18
+phyper((18-1),590,13630,500, lower.tail = F) # p=0.7661754
+#cluster 19
+phyper((28-1),590,13630,500, lower.tail = F) # p=0.06618954
+#cluster 20
+phyper((22-1),590,13630,500, lower.tail = F) # p=0.4192847
+
+######################Same for exp > 0
+#phyper(ZDE-1,totalZ,totalA,totalDE, lower.tail = F)
+
+
+#Cluster 0
+phyper((468-1),590,13630,(10428+468), lower.tail = F) # p=0.06136705
+#Cluster 1
+phyper((484-1),590,13630,(10649+484), lower.tail = F) # p=0.01258656*
+#Cluster 2
+phyper((449-1),590,13630,(10097+449), lower.tail = F) # p=0.1465056
+#cluster 3
+phyper((460-1),590,13630,(10044+460), lower.tail = F) # p=0.01077695*
+#cluster 4
+phyper((468-1),590,13630,(10172-468), lower.tail = F) # p=6.209611e-10***
+#cluster 5
+phyper((483-1),590,13630,(10665+483), lower.tail = F) # p=0.01921812*
+#cluster 6
+phyper((434-1),590,13630,(9482+434), lower.tail = F) # p=0.02071355*
+#cluster 7
+phyper((457-1),590,13630,(10122+457), lower.tail = F) # p=0.04390215*
+#cluster 8
+phyper((455-1),590,13630,(9936+455), lower.tail = F) # p=0.01241857*
+#cluster 9
+phyper((430-1),590,13630,(9515+430), lower.tail = F) # p=0.05988161
+#cluster 10
+phyper((468-1),590,13630,(10378+468), lower.tail = F) # p=0.04041227*
+#cluster 11
+phyper((453-1),590,13630,(10069+453), lower.tail = F) # p=0.06209481
+#cluster 12
+phyper((418-1),590,13630,(9167+418), lower.tail = F) # p=0.0368594*
+#cluster 13
+phyper((377-1),590,13630,(8135+377), lower.tail = F) # p=0.02221095*
+#cluster 14
+phyper((420-1),590,13630,(9229+420), lower.tail = F) # p=0.04135944*
+#cluster 15
+phyper((380-1),590,13630,(8496+380), lower.tail = F) # p=0.1648759
+#cluster 16
+phyper((402-1),590,13630,(8881+402), lower.tail = F) # p=0.0737938
+#cluster 17
+phyper((444-1),590,13630,(9503+444), lower.tail = F) # p=0.002066367**
+#cluster 18
+phyper((461-1),590,13630,(9995+461), lower.tail = F) # p=0.004886299**
+#cluster 19
+phyper((240-1),590,13630,(5178+240), lower.tail = F) # p=0.1018164
+#cluster 20
+phyper((180-1),590,13630,(3990+180), lower.tail = F) # p=0.2734098
+
+```
+
+```{dnds r}
+
+
+######################################################
+#DNDS
+######################################################
+
+dnds<-read.table("/Users/carosegami/Downloads/dNdS_Fice_3spalignment_frm_unfiltered.txt", 
+                 sep = "\t", header = T)
+dnds<-select(dnds, gene_id, dN_Fice, dS_Fice)
+dnds$dnds=dnds$dN_Fice/dnds$dS_Fice
+# to remove outliers
+dnds$dnds[dnds$dnds>2]=NA
+dnds$dnds[dnds$dS_Fice>1]=NA
+dnds<-na.omit(dnds)
+dim(dnds)
+#9808 genes
+
+
+dnds<-merge(avg.clus.cells,dnds, by.x = "V1", by.y = "gene_id", all.x = T, all.y = F)  
+dnds<- dnds%>%filter(V1.y!="ChrLGE22")%>%filter(V1.y!="ChrFal34")
+dnds$chr="A"
+dnds$chr[dnds$V1.y=="ChrZ"]="Z"
+dnds<-na.omit(dnds)
+dim(dnds)
+#9467 genes
+
+
+longdnds <- melt(setDT(dnds), id.vars = c("V1","Row.names","V1.y","dN_Fice","dS_Fice","dnds","chr"), variable.name = "cluster")
+longdnds$dnds=as.numeric(longdnds$dnds)
+longdnds$value=as.numeric(longdnds$value)
+longdnds<-na.omit(longdnds)
+
+longdnds_top<- longdnds %>% group_by(cluster) %>% top_n(n = 500, wt = value)
+#bootstraping
+#write.csv(longdnds_top, file="/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/top500genespercluster.csv")
+### top 500 genes per cluster without splitting Z and A
+
+#bootstraping
+l=split(longdnds_top,longdnds_top$cluster)
+corel=lapply(names(l),function(n){
+  x=l[[n]]
+  my.df <- data.frame(exp=x$value,dn=x$dN_Fice,ds=x$dS_Fice,dnds=x$dnds)
+  my.df <- my.df[!is.infinite(rowSums(my.df)), ]
+  # compute true values of mean(dn)/mean(ds)
+  truedn=mean(my.df$dn)
+  trueds=mean(my.df$ds)
+  truednds_mean=truedn/trueds
+  truednds_median=median(my.df$dnds)
+  trueexp_mean=mean(my.df$exp)
+  cat(n,"\n")
+  # compute boostraped values
+    sampdf=lapply(1:1000,function(i){
+    s=sample(nrow(my.df),replace=T);
+    my.dfs= my.df[s,];
+    sampledn=mean(my.dfs$dn)
+    sampleds=mean(my.dfs$ds)
+    samplednds_mean=sampledn/sampleds
+    samplednds_median=median(my.dfs$dnds)
+    sampleexp_mean=mean(my.dfs$exp)
+    return(list(samplednds_mean,samplednds_median,sampleexp_mean))
+    });
+  # take true values and quantiles of bootstraped values
+  # boostrap values are made on the same gene sampling for mean and medians
+  tm=data.frame(t(data.frame(lapply(sampdf,function(x){x[[1]]}))))
+  pourc_Mean=apply(tm,2,function(x){quantile(x,probs=c(0.025,0.975))})
+  tm=data.frame(t(data.frame(lapply(sampdf,function(x){x[[2]]}))))
+  pourc_Median=apply(tm,2,function(x){quantile(x,probs=c(0.025,0.975))})
+  tm=data.frame(t(data.frame(lapply(sampdf,function(x){x[[3]]}))))
+  pourc_EMean=apply(tm,2,function(x){quantile(x,probs=c(0.025,0.975))})
+
+  pourc_Mean=rbind(pourc_Mean,true_mean=truednds_mean)
+  pourc_Median=rbind(pourc_Median,true_median=truednds_median)
+   pourc_EMean=rbind(pourc_EMean,true_emean=trueexp_mean)
+  return(list(pourc_Mean,pourc_Median,pourc_EMean))
+  })
+
+
+corel_mean=lapply(corel,function(x){x[[1]]})
+corel_median=lapply(corel,function(x){x[[2]]})
+#corel_exp=lapply(corel,function(x){x[[3]]})
+
+table_mean=data.frame(corel_mean)
+names(table_mean)=names(l)
+table_mean["cluster",]=names(l)
+table_mean=data.frame(t(table_mean))
+table_mean[,1]=as.numeric(table_mean[,1])
+table_mean[,2]=as.numeric(table_mean[,2])
+table_mean[,3]=as.numeric(table_mean[,3])
+
+table_median=data.frame(corel_median)
+names(table_median)=names(l)
+table_median["cluster",]=names(l)
+table_median=data.frame(t(table_median))
+table_median[,1]=as.numeric(table_median[,1])
+table_median[,2]=as.numeric(table_median[,2])
+table_median[,3]=as.numeric(table_median[,3])
+
+
+#table_expr=data.frame(corel_exp)
+#names(table_expr)=names(l)
+#table_expr["cluster",]=names(l)
+#table_expr=data.frame(t(table_expr))
+#table_expr[,1]=as.numeric(table_expr[,1])
+#table_expr[,2]=as.numeric(table_expr[,2])
+#table_expr[,3]=as.numeric(table_expr[,3])
+
+
+### for ggplot figure 
+dodge <- position_dodge(width=0.5)  
+g=ggplot(table_mean, aes(x=factor(cluster, level=level_order_pure), y=true_mean)) + 
+    geom_errorbar(aes(ymin=X2.5., ymax=X97.5.), width=0,position=dodge, size =1) +
+    geom_point(position=dodge, size=3)+
+    ylab("dN/dS")+
+  xlab("Cluster")+theme_classic()
+g
+#ggsave("MeanDnDs_percl.pdf",g)
+#Fig6
+Fig6<-plot_grid(DEplot3,g, labels = c("A","B"))
+Fig6
+```
+
+```{r marker_comparison}
+Mouse <- read.table("/Users/carosegami/Dropbox/RNA seq/SCVELO_manuscript1/THE_FINAL_CLUSTERS/Fig_1A_Mouse_unselected_Hermann2018.csv", sep = ",", header = T)
+Human <- read.table("/Users/carosegami/Dropbox/RNA seq/SCVELO_manuscript1/THE_FINAL_CLUSTERS/Fig_1B_Human_unselected_Hermann2018.csv", sep = ",", header = T)
+Mouse<- mutate_all(Mouse, .funs=toupper)
+
+####add stages info to all markers df
+##flycatcher
+################Stages corresponding to clusters
+cluster<-level_order_pure
+stage<-c("somatic","somatic","somatic", "somatic","somatic","somatic",
+         "spermatogonia","spermatogonia",
+         "meiosis","meiosis","meiosis", "meiosis", "meiosis", "meiosis",
+         "elongating", "elongating","elongating", "elongating","elongating", "elongating",
+         "elongating")
+stages<-cbind(cluster,stage)
+stages<-as.data.frame(stages)
+fl.markers<-merge(fl.markers,stages, by.x = "cluster", by.y = "cluster")
+##Human
+
+clusterH<-c('8', '6', '10', '7', '14', '9', '12', '3','11', '2', '13', '5', '4',
+                 '1', '15', '16') 
+stageH<-c("spermatogonia","spermatogonia","spermatogonia","spermatogonia", "meiosis",
+          "meiosis", "meiosis","elongating", "elongating", "elongating","elongating",
+          "elongating","elongating","elongating","somatic","somatic")
+
+stagesH<-cbind(clusterH,stageH)
+stagesH<-as.data.frame(stagesH)
+
+Human<-merge(Human,stagesH, by.x = "cluster", by.y = "clusterH", all = T)
+##Mouse
+
+clusterM<-c('16', '10', '8', '6', '9', '12', '2','7', '13', '11', '5', '3',
+            '1', '4', '14', '15', '17') 
+stageM<-c("spermatogonia","spermatogonia", "meiosis","meiosis", "meiosis","elongating",
+          "elongating","elongating","elongating", "elongating","elongating",
+          "elongating","elongating","elongating","somatic",
+          "somatic","somatic")
+stagesM<-cbind(clusterM,stageM)
+stagesM<-as.data.frame(stagesM)
+
+Mouse<-merge(Mouse,stagesM, by.x = "cluster", by.y = "clusterM", all = T)
+
+###################unique markers per stage
+
+fly_stage<- fl.markers %>% group_by(stage) %>% arrange(avg_log2FC)%>%distinct(gene, .keep_all = T)
+mou_stage<-Mouse %>% group_by(stageM) %>% arrange(avg_logFC) %>% distinct(gene, .keep_all = T)
+
+hum_stage<-Human %>% group_by(stageH) %>% arrange(avg_logFC) %>% distinct(gene, .keep_all = T)
+```
+
+```{Venn2 r}
+
+library(ggVennDiagram)
+
+fly_stage<- fly_stage %>% group_by(stage) #%>% top_n(n = 298, wt = avg_logFC)
+mou_stage<- mou_stage %>% group_by(stageM) #%>% top_n(n = 298, wt = avg_logFC)
+hum_stage<- hum_stage %>% group_by(stageH) #%>% top_n(n = 298, wt = avg_logFC)
+
+
+
+
+fly_spermatogonia<-fly_stage%>%filter(stage=="spermatogonia")
+hum_spermatogonia<-hum_stage%>%filter(stageH=="spermatogonia")
+mou_spermatogonia<-mou_stage%>%filter(stageM=="spermatogonia")
+
+
+spermatogoniaV <- list(
+  fly=fly_spermatogonia$gene,
+  hum=hum_spermatogonia$gene,
+  mou=mou_spermatogonia$gene)
+
+
+Spe_V<-ggVennDiagram(spermatogoniaV)
+
+
+fly_meiosis<-fly_stage%>%filter(stage=="meiosis")
+hum_meiosis<-hum_stage%>%filter(stageH=="meiosis")
+mou_meiosis<-mou_stage%>%filter(stageM=="meiosis")
+
+
+meio <- list(
+  fly=fly_meiosis$gene,
+  hum=hum_meiosis$gene,
+  mou=mou_meiosis$gene)
+
+
+meio_V<-ggVennDiagram(meio)
+
+
+fly_elongating<-fly_stage%>%filter(stage=="elongating")
+hum_elongating<-hum_stage%>%filter(stageH=="elongating")
+mou_elongating<-mou_stage%>%filter(stageM=="elongating")
+
+
+elo <- list(
+  fly=fly_elongating$gene,
+  hum=hum_elongating$gene,
+  mou=mou_elongating$gene)
+
+
+elo_V<-ggVennDiagram(elo)
+
+
+fly_somatic<-fly_stage%>%filter(stage=="somatic")
+hum_somatic<-hum_stage%>%filter(stageH=="somatic")
+mou_somatic<-mou_stage%>%filter(stageM=="somatic")
+
+
+som <- list(
+  fly=fly_somatic$gene,
+  hum=hum_somatic$gene,
+  mou=mou_somatic$gene)
+
+
+som_V<-ggVennDiagram(som)
+
+plot_grid(Spe_V,meio_V,elo_V          )
+
+######Trial BioVenn
+library("BioVenn")
+
+biovenn_spermatogonia <- draw.venn(fly_spermatogonia$gene, hum_spermatogonia$gene, 
+                                   mou_spermatogonia$gene, subtitle="Spermatogonia", nrtype="abs")
+
+biovenn_meiosis <- draw.venn(fly_meiosis$gene, hum_meiosis$gene, 
+                                   mou_meiosis$gene, subtitle="Spermatocytes", nrtype="abs")
+
+biovenn_elongating <- draw.venn(fly_elongating$gene, hum_elongating$gene, 
+                                   mou_elongating$gene, subtitle="Spermatids", nrtype="abs")
+
+###Export independently
+```
+
+```{chisq_r}
+
+x<-as.table(rbind(c(1259, 1124), c(1369,2101), c(826,1566)))
+dimnames(x)<-list(stages=c("spermatogonia","meiosis","spermatid"),
+                  markers=c("shared", "private"))
+            
+x
+y<-chisq.test(x)
+y
+y$stdres
+chisq.posthoc.test::chisq.posthoc.test(x, method = "bonferroni")
+
+#
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
