@@ -7,6 +7,9 @@ editor_options:
   chunk_output_type: console
 ---
 
+#Main Analysis
+Load libraries
+
 ```{r libraries}
 library(Seurat)
 #library(SeuratDisk)
@@ -25,32 +28,32 @@ library(glmGamPoi)
 Load the 3 clusterings (without cluster 0) and find equivalent clusters and decide order for the combined pure species clustering for downstream analysis
 
 ```{r load}
-
-fl.minus0<-readRDS("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/DS1DS2pureminus0.sct.rds")
-fl.combined.markers<-read.csv("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/pure.markers.csv")
+#Pure (all individuals)
+fl.minus0<-readRDS("../Analysis_combinedDS1DS2/DS1DS2pureminus0.sct.rds")
+fl.combined.markers<-read.csv("../Analysis_combinedDS1DS2/pure.markers.csv")
 fl.top100 <- fl.combined.markers %>% group_by(cluster) %>% top_n(n = 100, wt = avg_log2FC)
 fl.top10 <- fl.combined.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
 
 Dimminus01<-DimPlot(fl.minus0, reduction = "umap", label = TRUE)#+NoLegend()
 Dimminus01
 
-cf.minus0.rec<-readRDS("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/cf.minus0.sct.rds")
-cf.markers<-read.csv("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/cf.markers.csv")
+#Collareds
+cf.minus0.rec<-readRDS("../Analysis_combinedDS1DS2/cf.minus0.sct.rds")
+cf.markers<-read.csv("../Analysis_combinedDS1DS2/cf.markers.csv")
 cf.top100 <- cf.markers %>% group_by(cluster) %>% top_n(n = 100, wt = avg_log2FC)
 cf.top10 <- cf.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
 
 Dimminus02<-DimPlot(cf.minus0.rec, reduction = "umap", label = TRUE)+NoLegend()
 Dimminus02
 
-
-pf.minus0.rec<-readRDS("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/pf.minus0.sct.rds")
-pf.markers<-read.csv("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/pf.markers.csv")
+#Pieds
+pf.minus0.rec<-readRDS("../Analysis_combinedDS1DS2/pf.minus0.sct.rds")
+pf.markers<-read.csv("../Analysis_combinedDS1DS2/pf.markers.csv")
 pf.top100 <- pf.markers %>% group_by(cluster) %>% top_n(n = 100, wt = avg_log2FC)
 pf.top10 <- pf.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
 
 Dimminus03<-DimPlot(pf.minus0.rec, reduction = "umap", label = TRUE)+NoLegend()
 Dimminus03
-
 
 
 level_order_cf<-c("18","2","9","15","4","8","11","14","16","6","3","12","0","17","7","10","13","1","5")
@@ -67,66 +70,11 @@ levels(fl.minus0)<-level_order_pure
 library(reshape2)
 library(corrplot)
 
-#fl.top100<-na.omit(fl.top100)
-#cf.top100<-na.omit(cf.top100)
-#pf.top100<-na.omit(pf.top100)
 
-
-#dim(fl.top100)
-#dim(cf.top100)
-#dim(pf.top100)
-
-
-#cfa<-select(cf.top100, X, avg_log2FC, cluster)
-#cfa<-pivot_wider(cfa, names_from ="cluster", values_from ="avg_log2FC")
-
-#pfa<-select(pf.top100, X, avg_log2FC, cluster)
-#pfa<-pivot_wider(pfa, names_from ="cluster", values_from ="avg_log2FC")
-
-#cfb<-cfa
-#pfb<-pfa
-
-#rownames(cfb)=cfb$X
-#rownames(pfb)=pfb$X
-#ds1torder=cfb[,level_order_cf]
-#ds2torder=pfb[,level_order_pf]
-
-#corDs=cor(ds1torder,ds2torder, method = "pearson")
-#corp1<-corrplot(corDs, is.corr = FALSE,method = 'color')
-#corp2<-corrplot(corDs, is.corr = FALSE,method = 'number',number.cex = 0.6) #  number
-
-
-####I think this was my way of doing it.
-#DS1_top500<-DS1 %>% group_by(cluster) %>% top_n(n = 500, wt = value)%>%select(Row.names,cluster)%>%ungroup()
-#DS2_top500<-DS2 %>% group_by(cluster) %>% top_n(n = 500, wt = value)%>%select(Row.names,cluster)%>%ungroup()
-
-#DS1_top500<-DS1_top500%>%select(Row.names)%>%distinct()
-#DS2_top500<-DS2_top500%>%select(Row.names)%>%distinct()
-#top500list<-rbind(DS1_top500,DS2_top500)
-#top500list<-distinct(top500list)
-
-#DS1500<-merge(DS1a,top500list, by.x = "Row.names", by.y = "Row.names", all.x = F,all.y = T)
-#DS2500<-merge(DS2a,top500list, by.x = "Row.names", by.y = "Row.names", all.x = F,all.y = T)
-
-#rownames(DS1500)=DS1500$Row.names
-#rownames(DS2500)=DS2500$Row.names
-#DS1500=DS1500[,ds1order]
-#DS2500=DS2500[,ds2order]
-
-#corDstop=cor(DS1500,DS2500, method = "pearson")
-#corp3<-corrplot(corDstop, is.corr = FALSE,method = 'color')
-#corp4<-corrplot(corDstop, is.corr = FALSE,method = 'number',number.cex = 0.6) #  number
-
-
-
-########################################Forget all that was for avg expression
-########This is the one I wanted
+########Correlation plots to show cluster correspondance
 
 library(corrplot)
 flmarkers.cfpf<-merge(cf.top100,pf.top100, by.x="gene", by.y="gene")
-#flmarkers200.merged<-merge(fl.top200,fl.top200.DS1, by.x="gene", by.y="gene")
-#roc.merged<-merge(top10_markers_roc, top10_markers_roc_DS1, by.x="Gene_name", by.y="Gene_name")
-#all.merged<-merge(fl.markers, fl.markers.DS1, by.x="gene", by.y="gene")
 
 corr_plot1<-corrplot(table(DS1=flmarkers.cfpf$cluster.x,DS2=flmarkers.cfpf$cluster.y),is.corr=F,addCoef.col="grey")
 
@@ -377,11 +325,11 @@ c20.m$cluster<-20
 c20.m<-tibble::rownames_to_column(c20.m, "Gene_name")
 top10_markers_roc<-bind_rows(df1,df2,df3,df4,df5,df6,df7,df8,df9,df10,df11,df12,
                         df13,df14,df15,df16,df17,df18,df19,df20)
-#write.csv(top10_markers_roc,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/top10markers_roc_pure.csv")
+#write.csv(top10_markers_roc,file = "../Analysis_combinedDS1DS2/Tables/top10markers_roc_pure.csv")
 
 All_rocmarkers<-bind_rows(c0.m,c1.m,c2.m,c3.m,c4.m,c5.m,c6.m,c7.m,c8.m,c9.m,c10.m,c11.m,c12.m,c13.m,c14.m,c15.m,c16.m,c17.m,c18.m,c19.m,c20.m)
-#write.csv(All_rocmarkers,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/All_rocmarkers_pure.csv")
-All_rocmarkers<-read.csv(file="/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/All_rocmarkers_pure.csv",sep=",")
+#write.csv(All_rocmarkers,file = "../Analysis_combinedDS1DS2/Tables/All_rocmarkers_pure.csv")
+All_rocmarkers<-read.csv(file="../Analysis_combinedDS1DS2/Tables/All_rocmarkers_pure.csv",sep=",")
 
 rep_markers<-filter(All_rocmarkers, myAUC>0.85)
 top10_rep<-rep_markers%>%group_by(cluster)%>%top_n(10,myAUC)
@@ -422,8 +370,8 @@ fl.combined.sct_sp<-AddMetaData(fl.minus0,samples_name$samples_name, col.name = 
 ##from now on new db name!
 
 ###Load more info on genes
-positions<-read.table("/Users/carosegami/Downloads/full.genes.on.fAlb15.chromPos_strict.from_gtf.bed", sep = "\t")
-genes <- read.table("/Users/carosegami/Dropbox/RNA seq/filtered_matrixes/filtered_feature_bc_matrix_CF1/features.tsv.gz", stringsAsFactors = FALSE)
+positions<-read.table("../full.genes.on.fAlb15.chromPos_strict.from_gtf.bed", sep = "\t")
+genes <- read.table("../features.tsv.gz", stringsAsFactors = FALSE)
 genes<-genes%>%select(V1,V2)%>%distinct(V2, .keep_all = T)
 
 
@@ -432,7 +380,7 @@ genes<-genes%>%select(V1,V2)%>%distinct(V2, .keep_all = T)
 ##Add ensembl id and cut significance
 fl.markers<-merge(fl.combined.markers,genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
 fl.markers.signif<-filter(fl.markers,p_val_adj<0.05)
-#write.csv(fl.markers.signif,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/fl.markers-pure.signif.csv")
+#write.csv(fl.markers.signif,file = "../Analysis_combinedDS1DS2/Tables/fl.markers-pure.signif.csv")
 ```
 
 ##DE analysis between cf and pf
@@ -549,14 +497,14 @@ Now plot DE mean and se and proportions
 ```{r plotDE}
 
 clusdiffresponse_wilcox_adj<-filter(clusdiffresponse_wilcox, p_val_adj<0.05)
-#write.csv(clusdiffresponse_wilcox_adj,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/DEwilcox_cfpf_significant.csv")
+#write.csv(clusdiffresponse_wilcox_adj,file = "../Analysis_combinedDS1DS2/Tables/DEwilcox_cfpf_significant.csv")
 
-clusdiffresponse_wilcox_adj<-read.csv(file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/DEwilcox_cfpf_significant.csv")
+clusdiffresponse_wilcox_adj<-read.csv(file = "../Analysis_combinedDS1DS2/Tables/DEwilcox_cfpf_significant.csv")
 
 Diff_genes_GO<-distinct(clusdiffresponse_wilcox_adj, V1)
-#write.csv(Diff_genes_GO, file="/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/list_allDEids.csv")
+#write.csv(Diff_genes_GO, file="../Analysis_combinedDS1DS2/Tables/list_allDEids.csv")
 
-Diff_genes_GO<-read.csv("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/list_allDEids.csv")
+Diff_genes_GO<-read.csv("../Analysis_combinedDS1DS2/Tables/list_allDEids.csv")
 
 ##default method
 wilcoxadj_diff21<-ggplot(clusdiffresponse_wilcox_adj, aes(x= factor(cluster, level = level_order_pure ), y= avg_log2FC, colour=Z )) + stat_summary(size=0.8)+geom_quasirandom(alpha=1/30)
@@ -1206,7 +1154,7 @@ avg.cells.all2$Z<-avg.cells.all2$V1.y
 avg.cells.all2$Z<-"A"
 avg.cells.all2$Z[avg.cells.all2$V1.y=="ChrZ"]<-"Z"
 
-#write.csv(avg.cells.all2,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/avg_exppure.csv")
+#write.csv(avg.cells.all2,file = "../Analysis_combinedDS1DS2/Tables/avg_exppure.csv")
 
 avg.cells.all2noNA<-na.omit(avg.cells.all2)
 
@@ -1217,12 +1165,12 @@ avg.cells.all2noNA_F<-filter(avg.cells.all2noNA, all>0.01)
 avg.cells.more0<-filter(avg.cells.all2noNA, all>0)
 
 avg.top500<- avg.cells.all2noNA %>% group_by(cluster) %>% top_n(n = 500, wt = all)
-#write.csv(avg.cells.all2,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/avg_top500pure.csv")
+#write.csv(avg.cells.all2,file = "../Analysis_combinedDS1DS2/Tables/avg_top500pure.csv")
 
 Zavg.top500<- filter(avg.top500, Z=="Z")
 
 avg.top1000<- avg.cells.all2noNA%>%group_by(cluster)%>%top_n(n=1000,wt=all)
-#write.csv(avg.cells.all2,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/avg_top1000.csv")
+#write.csv(avg.cells.all2,file = "../Analysis_combinedDS1DS2/Tables/avg_top1000.csv")
 
 ###Zplot of top 500
 
@@ -1342,7 +1290,7 @@ avg.clus.cells<-select(avg.clus.cells, V1, Row.names, "0","1","2","3","4","5","6
                       "11","12","13","14","15","16","17","18","19","20",V1.y)
 
 avg.clus.cells2 <- melt(setDT(avg.clus.cells), id.vars = c("V1","Row.names","V1.y"), variable.name = "cluster")
-#write.csv(avg.clus.cells2,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/avgexp_all_a.csv")
+#write.csv(avg.clus.cells2,file = "../Analysis_combinedDS1DS2/Tables/avgexp_all_a.csv")
  
 avg.clus.cells2$chr="A"
 avg.clus.cells2$chr[avg.clus.cells2$V1.y=="ChrZ"]="Z"
@@ -1357,7 +1305,7 @@ longdfexp$value<-longdfexp$value*10000
 #
 #
 longdfexp_top500<- longdfexp %>% group_by(cluster) %>% top_n(n = 500, wt = value)
-#write.csv(longdfexp_top500,file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/Top500_expressed.csv")
+#write.csv(longdfexp_top500,file = "../Analysis_combinedDS1DS2/Tables/Top500_expressed.csv")
 longdfexp_more0<- longdfexp %>% filter(value > 0) 
 
 #bootstraping
@@ -1521,7 +1469,7 @@ phyper((180-1),590,13630,(3990+180), lower.tail = F) # p=0.2734098
 #DNDS
 ######################################################
 
-dnds<-read.table("/Users/carosegami/Downloads/dNdS_Fice_3spalignment_frm_unfiltered.txt", 
+dnds<-read.table("../dNdS_Fice_3spalignment_frm_unfiltered.txt", 
                  sep = "\t", header = T)
 dnds<-select(dnds, gene_id, dN_Fice, dS_Fice)
 dnds$dnds=dnds$dN_Fice/dnds$dS_Fice
@@ -1549,7 +1497,7 @@ longdnds<-na.omit(longdnds)
 
 longdnds_top<- longdnds %>% group_by(cluster) %>% top_n(n = 500, wt = value)
 #bootstraping
-#write.csv(longdnds_top, file="/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/top500genespercluster.csv")
+#write.csv(longdnds_top, file="../Analysis_combinedDS1DS2/Tables/top500genespercluster.csv")
 ### top 500 genes per cluster without splitting Z and A
 
 #bootstraping
@@ -1637,8 +1585,8 @@ Fig6
 ```
 
 ```{r marker_comparison}
-Mouse <- read.table("/Users/carosegami/Dropbox/RNA seq/SCVELO_manuscript1/THE_FINAL_CLUSTERS/Fig_1A_Mouse_unselected_Hermann2018.csv", sep = ",", header = T)
-Human <- read.table("/Users/carosegami/Dropbox/RNA seq/SCVELO_manuscript1/THE_FINAL_CLUSTERS/Fig_1B_Human_unselected_Hermann2018.csv", sep = ",", header = T)
+Mouse <- read.table("../Fig_1A_Mouse_unselected_Hermann2018.csv", sep = ",", header = T)
+Human <- read.table("../Fig_1B_Human_unselected_Hermann2018.csv", sep = ",", header = T)
 Mouse<- mutate_all(Mouse, .funs=toupper)
 
 ####add stages info to all markers df
