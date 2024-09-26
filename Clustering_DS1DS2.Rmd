@@ -9,12 +9,9 @@ editor_options:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_knit$set(root.dir = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/")
+knitr::opts_knit$set(root.dir = "../Analysis_combinedDS1DS2/")
 ```
-
-## Transforming loom file
-
-We start with a loom file created by velocyto.py from cellranger output plus gtf file. Contains information of unspliced and spliced mRNA.
+#Load libraries
 
 ```{r libraries}
 library(Seurat)
@@ -29,20 +26,38 @@ library(data.table)
 library(reshape2)
 library(glmGamPoi)
 ```
+## Transforming loom file
 
-Load seurat objects (already subsetted)
+We start with a loom file created by velocyto.py from cellranger output plus gtf file. Contains information of unspliced and spliced mRNA.
+
+```{r}
+Bird1_dat<- ReadVelocity(file="../Bird1/velocyto/Bird1.loom") #Do this for all individuals, in this case there were 6 individuals
+
+Bird1 <- as.Seurat(x = Bird1_dat)
+Bird1[["RNA"]] <- Bird1[["spliced"]]
+
+#Now after all individuals are done, combine in a single seurat object
+
+pure_species<-merge(Bird1, y=c(Bird2,Bird3,Bird4,Bird5,Bird8), 
+                    add.cell.ids=c("Bird1","Bird2","Bird3","Bird4",
+                                   "Bird5","Bird8"), project="Ficedula")
+
+saveRDS(pure_species, "purespecies.rds")
+
+```
+
+Load seurat objects (not to repeat previous step)
 
 ```{r pressure, echo=FALSE}
 
 #Load combined seurat objects
 
-DS2pure<-readRDS("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/purespecies2024.rds")
-#DS2hybrids<-readRDS("/Users/carosegami/Dropbox/SC_numero2/Analysis/hybrids.rds")
-fl.combined<-readRDS("/Users/carosegami/Dropbox/RE-analysisPaperI/RAW_2022/fl.raw.combined_2022.rds")
+DS2pure<-readRDS("../Analysis_combinedDS1DS2/purespecies2024.rds")
 
 ```
 
 #Pure species
+We will do the clustering with all individuals, called "pure species" and with collareds only and pieds only.
 We start with pure species normalization.
 ```{r normalization}
 # The [[ operator can add columns to object metadata. This is a great place to stash QC stats
@@ -136,7 +151,7 @@ p3 # <4000 features 3000 anchor features min dist 0.7 res 0.6
 p4 # <4000 features 4000 anchor features min dist 0.7 res 0.6
 p5 # didnt like this one
 plot_grid(p1,p2,p3,p4, labels=c("A","B","C","D"))
-#They all work fine but subset 3 has more cells, let's try with that one.
+
 
 p6<-DimPlot(pure.combined.sct, reduction = "umap", split.by = "individual")
 p6
@@ -152,7 +167,7 @@ sum1<-per %>% group_by(cluster) %>% summarise(n=sum(n))
 #### Total cells of cluster 0 = 2020 that are 12.1% of all cells
 
 #save seurat obj
-saveRDS(pure.combined.sct, file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/pure_clusteredsct.rds")
+saveRDS(pure.combined.sct, file = "../Analysis_combinedDS1DS2/pure_clusteredsct.rds")
 ```
 
 #Collareds
@@ -186,7 +201,7 @@ p2 <- DimPlot(collareds.combined.sct, reduction = "umap", label = TRUE)
 p2
 
 #save seurat obj
-saveRDS(collareds.combined.sct, file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/collareds.combined.sct.rds")
+saveRDS(collareds.combined.sct, file = "../Analysis_combinedDS1DS2/collareds.combined.sct.rds")
 
 p5<-DimPlot(collareds.combined.sct, reduction = "umap", split.by = "individual")
 p5
@@ -221,7 +236,7 @@ p6 <- DimPlot(pieds.combined.sct, reduction = "umap", label = TRUE)
 p2
 p6
 #save seurat obj
-saveRDS(pieds.combined.sct, file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/pieds.combined.sct.rds")
+saveRDS(pieds.combined.sct, file = "../Analysis_combinedDS1DS2/pieds.combined.sct.rds")
 
 p7<-DimPlot(pieds.combined.sct, reduction = "umap", split.by = "individual")
 p7
@@ -234,7 +249,7 @@ p7
 Find markers and assign clusters
 
 ```{r find}
-pure.combined.sct<-readRDS("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/pure_clusteredsct.rds")
+pure.combined.sct<-readRDS("../Analysis_combinedDS1DS2/pure_clusteredsct.rds")
 
 pure.markers <- FindAllMarkers(pure.combined.sct, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 
@@ -293,11 +308,11 @@ Dimminus0
 UMAP_pure<-Dimminus0
 
 #saveRDS
-saveRDS(pure.minus0.rec,"/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/DS1DS2pureminus0.sct.rds")
+saveRDS(pure.minus0.rec,"../Analysis_combinedDS1DS2/DS1DS2pureminus0.sct.rds")
 
 pure.markers <- FindAllMarkers(pure.minus0.rec, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
-write.csv(pure.markers, file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/pure.markers.csv")
-#pure.markers<-read.csv("/Users/carosegami/Dropbox/SC_numero2/Analysis/pure.markers.csv")
+write.csv(pure.markers, file = "../Analysis_combinedDS1DS2/pure.markers.csv")
+#pure.markers<-read.csv("../pure.markers.csv")
 
 pure.top10 <- pure.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
 
@@ -314,12 +329,12 @@ Heatmap_pure
 Find markers and assign clusters
 
 ```{r find2}
-collareds.combined.sct<-readRDS("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/collareds.combined.sct.rds")
+collareds.combined.sct<-readRDS("../Analysis_combinedDS1DS2/collareds.combined.sct.rds")
 
 collareds.markers <- FindAllMarkers(collareds.combined.sct, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 
 collareds.top10 <- collareds.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
-#write.csv(top10,file = "RECLUSTER_minus0/top10fl2minus0reclust_markers.csv")
+#write.csv(top10,file = "../top10fl2minus0reclust_markers.csv")
 
 all.genes <- rownames(collareds.combined.sct)
 heatmap_collareds <- ScaleData(collareds.combined.sct, features = all.genes)
@@ -346,15 +361,15 @@ Dimminus0<-DimPlot(cf.minus0.rec, reduction = "umap", label = TRUE)+NoLegend()
 Dimminus0
 
 #Save reads
-saveRDS(cf.minus0.rec,"/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/cf.minus0.sct.rds")
+saveRDS(cf.minus0.rec,"../Analysis_combinedDS1DS2/cf.minus0.sct.rds")
 
 
 cf.markers <- FindAllMarkers(cf.minus0.rec, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
-write.csv(cf.markers, file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/cf.markers.csv")
+write.csv(cf.markers, file = "../Analysis_combinedDS1DS2/cf.markers.csv")
 
 
 cf.top10 <- cf.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
-#write.csv(top10,file = "RECLUSTER_minus0/top10fl2minus0reclust_markers.csv")
+#write.csv(top10,file = "../top10fl2minus0reclust_markers.csv")
 
 all.genes <- rownames(cf.minus0.rec)
 heatmap_cf2 <- ScaleData(cf.minus0.rec, features = all.genes)
@@ -369,12 +384,12 @@ Find markers and assign clusters
 You can add here the plots of top ten for cluster 0 to show shit markers.
 
 ```{r find2}
-pieds.combined.sct<-readRDS("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/pieds.combined.sct.rds")
+pieds.combined.sct<-readRDS("../Analysis_combinedDS1DS2/pieds.combined.sct.rds")
 
 pieds.markers <- FindAllMarkers(pieds.combined.sct, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 
 pieds.top10 <- pieds.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
-#write.csv(top10,file = "RECLUSTER_minus0/top10fl2minus0reclust_markers.csv")
+#write.csv(top10,file = "../top10fl2minus0reclust_markers.csv")
 
 all.genes <- rownames(pieds.combined.sct)
 heatmap_pieds <- ScaleData(pieds.combined.sct, features = all.genes)
@@ -396,14 +411,14 @@ Dimminus0<-DimPlot(pf.minus0.rec, reduction = "umap", label = TRUE)+NoLegend()
 Dimminus0
 
 #Save reads
-saveRDS(pf.minus0.rec,"/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/pf.minus0.sct.rds")
+saveRDS(pf.minus0.rec,"../Analysis_combinedDS1DS2/pf.minus0.sct.rds")
 
 
 pf.markers <- FindAllMarkers(pf.minus0.rec, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
-write.csv(pf.markers, file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/pf.markers.csv")
+write.csv(pf.markers, file = "../Analysis_combinedDS1DS2/pf.markers.csv")
 
 pf.top10 <- pf.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
-#write.csv(top10,file = "RECLUSTER_minus0/top10fl2minus0reclust_markers.csv")
+#write.csv(top10,file = "../top10fl2minus0reclust_markers.csv")
 
 all.genes <- rownames(pf.minus0.rec)
 heatmap_pf <- ScaleData(pf.minus0.rec, features = all.genes)
@@ -597,7 +612,7 @@ Dimminus0<-DimPlot(cf.minusSOM.rec, reduction = "umap", label = TRUE)#+NoLegend(
 Dimminus0
 
 #save seurat obj
-saveRDS(cf.minusSOM.rec, file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/cf.minusSOM.rec.rds")
+saveRDS(cf.minusSOM.rec, file = "../Analysis_combinedDS1DS2/cf.minusSOM.rec.rds")
 
 
 
@@ -625,7 +640,7 @@ Dimminus0<-DimPlot(pf.minusSOM.rec, reduction = "umap", label = TRUE)#+NoLegend(
 Dimminus0
 
 #save seurat obj
-saveRDS(pf.minusSOM.rec, file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/pf.minusSOM.rec.rds")
+saveRDS(pf.minusSOM.rec, file = "../Analysis_combinedDS1DS2/pf.minusSOM.rec.rds")
 
 
 ```
@@ -651,15 +666,15 @@ Dimminus0<-DimPlot(fl.minusSOM.rec, reduction = "umap", label = TRUE)#+NoLegend(
 Dimminus0
 
 #save seurat obj
-saveRDS(fl.minusSOM.rec, file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/fl.minusSOM.rec.rds")
+saveRDS(fl.minusSOM.rec, file = "../Analysis_combinedDS1DS2/fl.minusSOM.rec.rds")
 
 minusSOM.markers <- FindAllMarkers(fl.minusSOM.rec, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
-write.csv(minusSOM.markers = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/minusSOM.markers.csv")
+write.csv(minusSOM.markers = "../Analysis_combinedDS1DS2/minusSOM.markers.csv")
 
 minusSOM.top100 <- minusSOM.markers %>% group_by(cluster) %>% top_n(n = 100, wt = avg_log2FC)
 
-#This needs to be done in the cluster
-#DefaultAssay(pf.minus0.rec) <- "RNA"
-#SaveH5Seurat(pf.minus0.rec, filename = #"/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/fl2comb2019.h5Seurat")
-#Convert("/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/fl2comb2019.h5Seurat", dest = "h5ad")
+#Convert seurat rds to h5ad format for scVelo
+DefaultAssay(fl.minusSOM.rec) <- "RNA"
+SaveH5Seurat(fl.minusSOM.rec, filename = "../Analysis_combinedDS1DS2/fl2comb2019.h5Seurat")
+Convert("../fl2comb2019.h5Seurat", dest = "h5ad")
 ```
