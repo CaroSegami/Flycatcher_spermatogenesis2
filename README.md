@@ -5,4 +5,6 @@ The two markdown files are the ones needed to reproduce the downstream analysis 
 
 Clustering_DS1DS2.Rmd is the file to start with.
 
+You can also find here the Diamond pipeline to improve functional annotation and the file of our resulting improved annotation.
+
 The .loom and .rds files are too big to be posted here but will be made available upon request, just send an email to: carolina.segami@duke.edu. All other files needed are provided here.
