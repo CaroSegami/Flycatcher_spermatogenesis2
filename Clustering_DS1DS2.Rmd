@@ -7,11 +7,10 @@ editor_options:
   chunk_output_type: console
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-knitr::opts_knit$set(root.dir = "../Analysis_combinedDS1DS2/")
-```
-#Load libraries
+
+## Transforming loom file
+
+We start with a loom file created by velocyto.py from cellranger output plus gtf file. Contains information of unspliced and spliced mRNA.
 
 ```{r libraries}
 library(Seurat)
@@ -26,38 +25,19 @@ library(data.table)
 library(reshape2)
 library(glmGamPoi)
 ```
-## Transforming loom file
 
-We start with a loom file created by velocyto.py from cellranger output plus gtf file. Contains information of unspliced and spliced mRNA.
-
-```{r}
-Bird1_dat<- ReadVelocity(file="../Bird1/velocyto/Bird1.loom") #Do this for all individuals, in this case there were 6 individuals
-
-Bird1 <- as.Seurat(x = Bird1_dat)
-Bird1[["RNA"]] <- Bird1[["spliced"]]
-
-#Now after all individuals are done, combine in a single seurat object
-
-pure_species<-merge(Bird1, y=c(Bird2,Bird3,Bird4,Bird5,Bird8), 
-                    add.cell.ids=c("Bird1","Bird2","Bird3","Bird4",
-                                   "Bird5","Bird8"), project="Ficedula")
-
-saveRDS(pure_species, "purespecies.rds")
-
-```
-
-Load seurat objects (not to repeat previous step)
+Load seurat objects (already subsetted)
 
 ```{r pressure, echo=FALSE}
 
 #Load combined seurat objects
 
-DS2pure<-readRDS("../Analysis_combinedDS1DS2/purespecies2024.rds")
+DS2pure<-readRDS("Analysis_combinedDS1DS2/purespecies2024.rds")
+fl.combined<-readRDS("fl.raw.combined_2022.rds")
 
 ```
 
 #Pure species
-We will do the clustering with all individuals, called "pure species" and with collareds only and pieds only.
 We start with pure species normalization.
 ```{r normalization}
 # The [[ operator can add columns to object metadata. This is a great place to stash QC stats
@@ -151,7 +131,7 @@ p3 # <4000 features 3000 anchor features min dist 0.7 res 0.6
 p4 # <4000 features 4000 anchor features min dist 0.7 res 0.6
 p5 # didnt like this one
 plot_grid(p1,p2,p3,p4, labels=c("A","B","C","D"))
-
+#They all work fine but subset 3 has more cells, let's try with that one.
 
 p6<-DimPlot(pure.combined.sct, reduction = "umap", split.by = "individual")
 p6
@@ -167,7 +147,7 @@ sum1<-per %>% group_by(cluster) %>% summarise(n=sum(n))
 #### Total cells of cluster 0 = 2020 that are 12.1% of all cells
 
 #save seurat obj
-saveRDS(pure.combined.sct, file = "../Analysis_combinedDS1DS2/pure_clusteredsct.rds")
+saveRDS(pure.combined.sct, file = "pure_clusteredsct.rds")
 ```
 
 #Collareds
@@ -201,7 +181,7 @@ p2 <- DimPlot(collareds.combined.sct, reduction = "umap", label = TRUE)
 p2
 
 #save seurat obj
-saveRDS(collareds.combined.sct, file = "../Analysis_combinedDS1DS2/collareds.combined.sct.rds")
+saveRDS(collareds.combined.sct, file = "collareds.combined.sct.rds")
 
 p5<-DimPlot(collareds.combined.sct, reduction = "umap", split.by = "individual")
 p5
@@ -236,7 +216,7 @@ p6 <- DimPlot(pieds.combined.sct, reduction = "umap", label = TRUE)
 p2
 p6
 #save seurat obj
-saveRDS(pieds.combined.sct, file = "../Analysis_combinedDS1DS2/pieds.combined.sct.rds")
+saveRDS(pieds.combined.sct, file = "pieds.combined.sct.rds")
 
 p7<-DimPlot(pieds.combined.sct, reduction = "umap", split.by = "individual")
 p7
@@ -249,12 +229,22 @@ p7
 Find markers and assign clusters
 
 ```{r find}
-pure.combined.sct<-readRDS("../Analysis_combinedDS1DS2/pure_clusteredsct.rds")
-
+pure.combined.sct<-readRDS("pure_clusteredsct.rds")
 pure.markers <- FindAllMarkers(pure.combined.sct, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
-
 pure.top10 <- pure.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
 
+#Load new annotation
+NewAnn<-read_delim("FinalNewAnnotation.tsv", delim=" ", col_names=T) 
+NewAnn1<-NewAnn%>%
+  select(X2,gene_name)
+##Genes we are using in sc analysis
+genes <- read.table("features.tsv.gz", stringsAsFactors = FALSE)
+genes<-genes%>%dplyr::select(V1,V2)%>%distinct(V2, .keep_all = T)
+NewAnn2<-merge(NewAnn1,genes, by.x="X2", by.y="V1")
+NewAnn2$gene_name<-toupper(NewAnn2$gene_name)
+write.csv(NewAnn2, file = "NewAnn2.csv")
+
+#I think it's too complicated at this stage... will do later
 
 all.genes <- rownames(pure.combined.sct)
 heatmap_pure <- ScaleData(pure.combined.sct, features = all.genes)
@@ -273,16 +263,48 @@ c10<- FindMarkers(pure.combined.sct, ident.1 = 10, logfc.threshold = 0.25, test.
 roc_10<-head(c10, n=10)
 
 #marker plot
-plot_9<-DotPlot(pure.combined.sct, features = c("HSP90AA1", "HMGB1", "H2AFZ", "RPS24", "ENSFALG00000008965", "ENSFALG00000000048", "RPS11", "ENSFALG00000010973", "ENSFALG00000013662", "RPL23A"), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()
+plot_9<-DotPlot(pure.combined.sct, features = c("HSP90AA1", "HMGB1", "H2AFZ", "RPS24", "ENSFALG00000008965", "ENSFALG00000000048", "RPS11", "ENSFALG00000010973", "ENSFALG00000013662", "RPL23A"), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()+NoLegend() +
+   ylab("Cluster")+
+  scale_x_discrete(labels = function(x) recode(
+    x,
+    "ENSFALG00000008965"= "RPL17",
+    "ENSFALG00000000048"= "PPIA",
+    "ENSFALG00000010973"="RPS11",
+    "ENSFALG00000013662"="RPL32"))+
+  theme(
+    axis.text.x = element_text(face = "italic")
+  )
 
-plot_0<-DotPlot(pure.combined.sct, features = c("CDKN1B", "VIM", "COX1", "ENSFALG00000016233", "ENSFALG00000012594", "ENSFALG00000000295", "COX2", "WFS1", "ENSFALG00000014556", "ENSFALG00000000659"), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()
+plot_0<-DotPlot(pure.combined.sct, features = c("CDKN1B", "VIM", "COX1", "ENSFALG00000016233", "ENSFALG00000012594", "ENSFALG00000000295", "COX2", "WFS1", "ENSFALG00000014556", "ENSFALG00000000659"), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()+NoLegend()+
+   ylab("Cluster")+
+  scale_x_discrete(labels = function(x) recode(
+    x,
+    "ENSFALG00000012594"= "CSNK1E",
+    "ENSFALG00000000295"= "MED17",
+    "ENSFALG00000014556"="GNG11",
+    "ENSFALG00000000659"="RAP1A"))+
+  theme(
+    axis.text.x = element_text(face = "italic")
+  )
 
-plot_10<-DotPlot(pure.combined.sct, features = c("CALM2", "HSP90AA1", "UCHL1", "STMN1", "ENSFALG00000009451", "ASZ1", "DUT", "SMC2", "HMGB2", "ENSFALG00000009073"), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()
+plot_10<-DotPlot(pure.combined.sct, features = c("CALM2", "HSP90AA1", "UCHL1", "STMN1", "ENSFALG00000009451", "ASZ1", "DUT", "SMC2", "HMGB2", "ENSFALG00000009073"), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()+
+   ylab("Cluster")+
+  scale_x_discrete(labels = function(x) recode(
+    x,
+    "ENSFALG00000009451"= "UQCRH",
+    "ENSFALG00000009073"= "SYCP3"))+
+  theme(
+    axis.text.x = element_text(face = "italic")
+  )
 
-plot_grid(plot_0,plot_9,plot_10, nrow = 1, labels = c("A","B","C"))
+(plot_0|plot_9|plot_10) + plot_annotation(tag_levels = "A")
 ## Clear that cluster 0 has no good markers
 
-plot_ddx4<-DotPlot(pure.combined.sct, features = c("DDX4"), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()
+plot_ddx4<-DotPlot(pure.combined.sct, features = c("DDX4"), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()+
+   ylab("Cluster")+
+  theme(
+    axis.text.x = element_text(face = "italic")
+  )
 
 #subset out 0
 pure.combined.sct.minus0<-subset(pure.combined.sct, idents = c("0"), invert=T)
@@ -308,11 +330,14 @@ Dimminus0
 UMAP_pure<-Dimminus0
 
 #saveRDS
-saveRDS(pure.minus0.rec,"../Analysis_combinedDS1DS2/DS1DS2pureminus0.sct.rds")
+saveRDS(pure.minus0.rec,"DS1DS2pureminus0.sct.rds")
+
+#flminus0
+pure.minus0.rec<-fl.minus0
 
 pure.markers <- FindAllMarkers(pure.minus0.rec, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
-write.csv(pure.markers, file = "../Analysis_combinedDS1DS2/pure.markers.csv")
-#pure.markers<-read.csv("../pure.markers.csv")
+write.csv(pure.markers, file = "pure.markers.csv")
+#pure.markers<-read.csv("pure.markers.csv")
 
 pure.top10 <- pure.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
 
@@ -329,12 +354,12 @@ Heatmap_pure
 Find markers and assign clusters
 
 ```{r find2}
-collareds.combined.sct<-readRDS("../Analysis_combinedDS1DS2/collareds.combined.sct.rds")
+#collareds.combined.sct<-readRDS("collareds.combined.sct.rds")
 
 collareds.markers <- FindAllMarkers(collareds.combined.sct, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 
 collareds.top10 <- collareds.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
-#write.csv(top10,file = "../top10fl2minus0reclust_markers.csv")
+#write.csv(collareds.markers,file = "CF_markers.csv")
 
 all.genes <- rownames(collareds.combined.sct)
 heatmap_collareds <- ScaleData(collareds.combined.sct, features = all.genes)
@@ -361,15 +386,15 @@ Dimminus0<-DimPlot(cf.minus0.rec, reduction = "umap", label = TRUE)+NoLegend()
 Dimminus0
 
 #Save reads
-saveRDS(cf.minus0.rec,"../Analysis_combinedDS1DS2/cf.minus0.sct.rds")
+saveRDS(cf.minus0.rec,"cf.minus0.sct.rds")
 
 
 cf.markers <- FindAllMarkers(cf.minus0.rec, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
-write.csv(cf.markers, file = "../Analysis_combinedDS1DS2/cf.markers.csv")
+write.csv(cf.markers, file = "cfminus0.markers.csv")
 
 
 cf.top10 <- cf.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
-#write.csv(top10,file = "../top10fl2minus0reclust_markers.csv")
+#write.csv(top10,file = "top10fl2minus0reclust_markers.csv")
 
 all.genes <- rownames(cf.minus0.rec)
 heatmap_cf2 <- ScaleData(cf.minus0.rec, features = all.genes)
@@ -384,19 +409,19 @@ Find markers and assign clusters
 You can add here the plots of top ten for cluster 0 to show shit markers.
 
 ```{r find2}
-pieds.combined.sct<-readRDS("../Analysis_combinedDS1DS2/pieds.combined.sct.rds")
+#pieds.combined.sct<-readRDS("pieds.combined.sct.rds")
 
 pieds.markers <- FindAllMarkers(pieds.combined.sct, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
 
 pieds.top10 <- pieds.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
-#write.csv(top10,file = "../top10fl2minus0reclust_markers.csv")
+#write.csv(top10,file = "top10fl2minus0reclust_markers.csv")
 
 all.genes <- rownames(pieds.combined.sct)
 heatmap_pieds <- ScaleData(pieds.combined.sct, features = all.genes)
 Heatmap<-DoHeatmap(heatmap_pieds, features = pieds.top10$gene)
 Heatmap
 
-## Clear that cluster 0 has no good markers
+## Clear that cluster 0 has no good markers,,,,,
 #subset out 0
 pf.combined.sct.minus0<-subset(pieds.combined.sct, idents = c("0"), invert=T)
 Dimminus0<-DimPlot(pf.combined.sct.minus0, reduction = "umap", label = TRUE)
@@ -411,14 +436,14 @@ Dimminus0<-DimPlot(pf.minus0.rec, reduction = "umap", label = TRUE)+NoLegend()
 Dimminus0
 
 #Save reads
-saveRDS(pf.minus0.rec,"../Analysis_combinedDS1DS2/pf.minus0.sct.rds")
+saveRDS(pf.minus0.rec,"pf.minus0.sct.rds")
 
 
 pf.markers <- FindAllMarkers(pf.minus0.rec, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
-write.csv(pf.markers, file = "../Analysis_combinedDS1DS2/pf.markers.csv")
+write.csv(pf.markers, file = "pf.markers.csv")
 
 pf.top10 <- pf.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
-#write.csv(top10,file = "../top10fl2minus0reclust_markers.csv")
+#write.csv(top10,file = "top10fl2minus0reclust_markers.csv")
 
 all.genes <- rownames(pf.minus0.rec)
 heatmap_pf <- ScaleData(pf.minus0.rec, features = all.genes)
@@ -442,34 +467,82 @@ DotPlot(pure.minus0.rec, features = c("TOP2B", "DMC1","RMB5", "LDHA", "UCHL1"), 
 #Kaesman markers
 DotPlot(pure.minus0.rec, features = c("CLU", "TAGLN","ACTA2", "CD34", "TM4SF1","APOE","CD74",
                                       "STAR","CYP11A1","GFRA1","PIWIL4","DMRT1","STRA8","SYCE1",
-                                      "SYCP1","PIWIL1","SYCP2","TANK","AURKA","LRRIQ1","ACRV1","SPACA1",
+                                      "SYCP1","PIWIL1","SYCP2","TANK","AURKA","ENSFALG00000010544","ACRV1","SPACA1",
                                       "SPATA3","NRBP1","PRM1","GABBR2"), 
         cols = c("blue","red"), dot.scale = 8) + RotatedAxis()
-
+#ENSFALG00000010544=LRRIQ1
 #####More markers
-spermatogonia.markers<-c("ID4","L1TD1","ZBTB43","NR6A1",
-"DMRT1","DAZL","SYCP3","BEND4","MORC1","KIT",
-"ZBTB16","ITGA6","LIN28","DPPA4","FGFR3","SOHLH1","SOHLH2","REC8","TEX101","LY6K","TSPAN33","HELLS",
-"NANOS3","NANOS2","NEUROG3","LIN28A","UTF1","SCML2","RAD51","RHOX13","ETV5","RHOXF1","MAGEA4","BCL6B","GFRA1","PIWIL4","STRA8")
-spermatocyte.markers<-c("SYCP1","SYCP2","CENPU","MEIOB","SPATA22","NOL8","ACYP1","HORMAD1","MYBL1","DMC1",
-"FBXO47","SOX30", "TOP2B", "SYCE1","PIWIL1","TANK","AURKA","LDHA")
-spermatid.markers<-c("UNC80","ACRV1","H1FNT","SPACA3","PRM1","PRM2","TNP1","SPATA3","TNP2","TPPP2","CBY3",
-                     "SPACA4","CHD5","SPATA19","IQCF6","PEX5L","ABHD5","REEP6","TCT24","LRRIQ1","SPACA1",
-                     "CCNB1","TSSK6","CETN4","TEKT1","ACR","SSXB1","SSXB2","CATSPER3","CATSPER1","GABBR2")
+spermatogonia.markers<-c("ID4","L1TD1","ZBTB43","NR6A1","DMRT1","DAZL","SYCP3","BEND4","MORC1","KIT","ZBTB16","ITGA6","LIN28",
+                         "DPPA4","FGFR3","SOHLH1","SOHLH2","REC8","TEX101","LY6K","TSPAN33","HELLS","NANOS3","NANOS2","NEUROG3",
+                         "LIN28A","UTF1","SCML2","RAD51","RHOX13","ETV5","RHOXF1","MAGEA4","BCL6B","GFRA1","PIWIL4","STRA8",
+                         "ENSFALG00000008893","ENSFALG00000009073","ENSFALG00000006160")
+
+#DAZL=ENSFALG00000008893
+#SYCP3=ENSFALG00000009073
+#NANOS3=ENSFALG00000006160
+spermatocyte.markers<-c("SYCP1","SYCP2","CENPU","MEIOB","SPATA22","NOL8","ACYP1","HORMAD1","MYBL1","DMC1","FBXO47","SOX30", 
+                        "TOP2B", "SYCE1","PIWIL1","TANK","AURKA","LDHA")
+
+spermatid.markers<-c("UNC80","ACRV1","H1FNT","SPACA3","PRM1","PRM2","TNP1","SPATA3","TNP2","TPPP2","CBY3","SPACA4","CHD5","SPATA19",
+                     "IQCF6","PEX5L","ABHD5","REEP6","TCT24","LRRIQ1","SPACA1","CCNB1","TSSK6","CETN4","TEKT1","ACR","SSXB1","SSXB2",
+                     "CATSPER3","CATSPER1","GABBR2","ENSFALG00000010544")
+#ENSFALG00000010544=LRRIQ1
+
 macrophage.markers<-c("CD74","CSF1R","PECAM1","LYZ","TYROBP","CD83","PFN1","C1QC","CTSS","PF4","FCER1G","CBR2",
-                      "CTSC","WFDC17","LAPTM5","CTSB","ITM2B")
+                      "CTSC","WFDC17","LAPTM5","CTSB","ITM2B","ENSFALG00000002762","ENSFALG00000004560")
+#LYZ=ENSFALG00000002762
+#CTSS=ENSFALG00000004560
+
 sertoli.markers<-c("KIF5B","CLU","CYP17A1","GATA4","LGALS1","MICAL2","BBX")
+
 immleydig.markers<-c("CFD","DCN","NR2F2","DLK1","IGF1","IGF2","SFRP1","ADIRF","RPL10")
+
 sommatic.markers<-c("IGFBP5","IGFBP7","COL4A1","NR2F2","CXCL12","ACTA2","MYH11","MYL6","CD52","CD69","CD3D","TRAC",
                     "ID2","VWF","TIE1","SELE","MCAM","MYL9","ADIRF","CRIP1","TAGLN","STEAP4","ITGA1","CHCHD10",
-                    "CFD","DCN","DLK1","IGF1","IGF2","SFRP1","RPL10")
+                    "CFD","DCN","DLK1","IGF1","IGF2","SFRP1","RPL10","ENSFALG00000014328","ENSFALG00000007904","ENSFALG00000003566",
+                    "ENSFALG00000004561","ENSFALG00000010740","ENSFALG00000014458")
+#CD69=ENSFALG00000014328
+#SELE=ENSFALG00000007904
+#CRIP1=ENSFALG00000003566
+#ITGA1=ENSFALG00000004561,ENSFALG00000010740
+#CHCHHD10=ENSFALG00000014458
 
-DotPlot(pure.minus0.rec, features = (spermatogonia.markers), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()
-DotPlot(pure.minus0.rec, features = (spermatocyte.markers), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()
-DotPlot(pure.minus0.rec, features = (spermatid.markers), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()
-DotPlot(pure.minus0.rec, features = (sertoli.markers), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()
+DotPlot(pure.minus0.rec, features = (spermatogonia.markers), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()+
+  ylab("Cluster")+
+  scale_x_discrete(labels = function(x) recode(
+    x,
+    "ENSFALG00000008893"= "DAZL",
+    "ENSFALG00000009073"= "SYCP3"))+
+  theme(
+    axis.text.x = element_text(face = "italic")
+  )
+DotPlot(pure.minus0.rec, features = (spermatocyte.markers), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()+
+  ylab("Cluster")+
+  theme(
+    axis.text.x = element_text(face = "italic")
+  )
+DotPlot(pure.minus0.rec, features = (spermatid.markers), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()+
+  ylab("Cluster")+
+  theme(
+    axis.text.x = element_text(face = "italic")
+  )
+
+DotPlot(pure.minus0.rec, features = (sertoli.markers), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()+
+  ylab("Cluster")+
+  theme(
+    axis.text.x = element_text(face = "italic")
+  )
+
+
 DotPlot(pure.minus0.rec, features = (immleydig.markers), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()
-DotPlot(pure.minus0.rec, features = (sommatic.markers), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()
+DotPlot(pure.minus0.rec, features = (sommatic.markers), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()+
+  ylab("Cluster")+
+  scale_x_discrete(labels = function(x) recode(
+    x,
+    "ENSFALG00000014458"= "CHCHHD10"))+
+  theme(
+    axis.text.x = element_text(face = "italic")
+  )
 DotPlot(pure.minus0.rec, features = (macrophage.markers), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()
 
 ```
@@ -477,7 +550,7 @@ DotPlot(pure.minus0.rec, features = (macrophage.markers), cols = c("blue","red")
 ```{r explore_REVs}
 
 FeaturePlot(object = pure.minus0.rec, features = "DDX4")
-DotPlot(fl.minus0, features = c("DDX4"), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()  #Lau DDX4 germ and VIM somatic (in mammals)
+DotPlot(pure.minus0.rec, features = c("DDX4"), cols = c("blue","red"), dot.scale = 8) + RotatedAxis()  #Lau DDX4 germ and VIM somatic (in mammals)
 DotPlot(pure.minus0.rec, features = c("DMRT1", "ETV5", "GFRA1", "ID4", "ZBTB16"), cols = c("blue","red"), dot.scale = 8) + RotatedAxis() #rev1 spermatogonia plus DDX4 pangerm
 DotPlot(pure.minus0.rec, features = c("TOP2B", "DMC1","RMB5", "LDHA","MEIOB", "CENPU","SCYP2", "SCYP3"), cols = c("blue","red"), dot.scale = 8) + RotatedAxis() #rev2+rev1 meiosis
 
@@ -599,7 +672,7 @@ Just CF for velocity
 
 Dimminus0<-DimPlot(cf.minus0.rec, reduction = "umap", label = TRUE)
 Dimminus0
-cf.combined.sct.minusSOM<-subset(cf.minus0.rec, idents = c("18","2","9","4","15"), invert=T)
+cf.combined.sct.minusSOM<-subset(cf.minus0.rec, idents = c("18","2","9","19"), invert=T)
 Dimminus0<-DimPlot(cf.combined.sct.minusSOM, reduction = "umap", label = TRUE)
 Dimminus0
 #Recluster
@@ -612,7 +685,7 @@ Dimminus0<-DimPlot(cf.minusSOM.rec, reduction = "umap", label = TRUE)#+NoLegend(
 Dimminus0
 
 #save seurat obj
-saveRDS(cf.minusSOM.rec, file = "../Analysis_combinedDS1DS2/cf.minusSOM.rec.rds")
+saveRDS(cf.minusSOM.rec, file = "cf.minusSOM.rec.rds")
 
 
 
@@ -640,7 +713,7 @@ Dimminus0<-DimPlot(pf.minusSOM.rec, reduction = "umap", label = TRUE)#+NoLegend(
 Dimminus0
 
 #save seurat obj
-saveRDS(pf.minusSOM.rec, file = "../Analysis_combinedDS1DS2/pf.minusSOM.rec.rds")
+saveRDS(pf.minusSOM.rec, file = "pf.minusSOM.rec.rds")
 
 
 ```
@@ -666,15 +739,15 @@ Dimminus0<-DimPlot(fl.minusSOM.rec, reduction = "umap", label = TRUE)#+NoLegend(
 Dimminus0
 
 #save seurat obj
-saveRDS(fl.minusSOM.rec, file = "../Analysis_combinedDS1DS2/fl.minusSOM.rec.rds")
+saveRDS(fl.minusSOM.rec, file = "fl.minusSOM.rec.rds")
 
 minusSOM.markers <- FindAllMarkers(fl.minusSOM.rec, only.pos = TRUE, min.pct = 0.25, logfc.threshold = 0.25)
-write.csv(minusSOM.markers = "../Analysis_combinedDS1DS2/minusSOM.markers.csv")
+write.csv(minusSOM.markers = "minusSOM.markers.csv")
 
 minusSOM.top100 <- minusSOM.markers %>% group_by(cluster) %>% top_n(n = 100, wt = avg_log2FC)
 
-#Convert seurat rds to h5ad format for scVelo
-DefaultAssay(fl.minusSOM.rec) <- "RNA"
-SaveH5Seurat(fl.minusSOM.rec, filename = "../Analysis_combinedDS1DS2/fl2comb2019.h5Seurat")
-Convert("../fl2comb2019.h5Seurat", dest = "h5ad")
+#This needs to be done in the cluster
+#DefaultAssay(pf.minus0.rec) <- "RNA"
+#SaveH5Seurat(pf.minus0.rec, filename = "fl2comb2019.h5Seurat")
+#Convert("fl2comb2019.h5Seurat", dest = "h5ad")
 ```

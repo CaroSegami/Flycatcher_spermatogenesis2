@@ -7,9 +7,6 @@ editor_options:
   chunk_output_type: console
 ---
 
-#Main Analysis
-Load libraries
-
 ```{r libraries}
 library(Seurat)
 #library(SeuratDisk)
@@ -28,35 +25,46 @@ library(glmGamPoi)
 Load the 3 clusterings (without cluster 0) and find equivalent clusters and decide order for the combined pure species clustering for downstream analysis
 
 ```{r load}
-#Pure (all individuals)
-fl.minus0<-readRDS("../Analysis_combinedDS1DS2/DS1DS2pureminus0.sct.rds")
-fl.combined.markers<-read.csv("../Analysis_combinedDS1DS2/pure.markers.csv")
+
+fl.minus0<-readRDS("DS1DS2pureminus0.sct.rds")
+fl.combined.markers<-read.csv("pure.markers.csv")
 fl.top100 <- fl.combined.markers %>% group_by(cluster) %>% top_n(n = 100, wt = avg_log2FC)
+fl.top100$cluster<-as.factor(fl.top100$cluster)
 fl.top10 <- fl.combined.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
 
-Dimminus01<-DimPlot(fl.minus0, reduction = "umap", label = TRUE)#+NoLegend()
+Dimminus01<-DimPlot(fl.minus0, reduction = "umap", label = TRUE)+NoLegend()
 Dimminus01
 
-#Collareds
-cf.minus0.rec<-readRDS("../Analysis_combinedDS1DS2/cf.minus0.sct.rds")
-cf.markers<-read.csv("../Analysis_combinedDS1DS2/cf.markers.csv")
+cf.minus0.rec<-readRDS("cf.minus0.sct.rds")
+cf.markers<-read.csv("cfminus0.markers.csv") #load new version
 cf.top100 <- cf.markers %>% group_by(cluster) %>% top_n(n = 100, wt = avg_log2FC)
+cf.top100$cluster<-as.factor(cf.top100$cluster)
 cf.top10 <- cf.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
+cf.markers_signif<-cf.markers%>%filter(p_val_adj<0.05)
 
 Dimminus02<-DimPlot(cf.minus0.rec, reduction = "umap", label = TRUE)+NoLegend()
 Dimminus02
 
-#Pieds
-pf.minus0.rec<-readRDS("../Analysis_combinedDS1DS2/pf.minus0.sct.rds")
-pf.markers<-read.csv("../Analysis_combinedDS1DS2/pf.markers.csv")
+
+pf.minus0.rec<-readRDS("pf.minus0.sct.rds")
+pf.markers<-read.csv("pf.markers.csv")
 pf.top100 <- pf.markers %>% group_by(cluster) %>% top_n(n = 100, wt = avg_log2FC)
+pf.top100$cluster<-as.factor(pf.top100$cluster)
 pf.top10 <- pf.markers %>% group_by(cluster) %>% top_n(n = 10, wt = avg_log2FC)
+pf.markers_signif<-pf.markers%>%filter(p_val_adj<0.05)
 
 Dimminus03<-DimPlot(pf.minus0.rec, reduction = "umap", label = TRUE)+NoLegend()
 Dimminus03
 
+NewAnn2<-read.csv("NewAnn2.csv")
+NewAnn2$gene_name<-toupper(NewAnn2$gene_name)
+NewAnn2<-select(NewAnn2, X2,gene_name,V2)
+fl.combined.markers<-select(fl.combined.markers, gene, p_val, avg_log2FC, p_val_adj,cluster)
+Markers_correspondance<-merge(fl.combined.markers, NewAnn2, by.x="gene", by.y="V2", all.x=T, all.y=F)
+Mfl.markers.signif<-filter(Markers_correspondance,p_val_adj<0.05)
+#write.csv(Mfl.markers.signif, file = "pure.signif.markers.csv")
 
-level_order_cf<-c("18","2","9","15","4","8","11","14","16","6","3","12","0","17","7","10","13","1","5")
+level_order_cf<-c("18","2","9","19","16","4","8","10","14","15","6","3","12","0","17","7","11","13","1","5")
 levels(cf.minus0.rec)<-level_order_cf
 
 level_order_pf<-c("17","18","16","14","4", "19", "9", "10", "11", "15","12","2","3","13","1","5","6","7","0","8")
@@ -65,35 +73,84 @@ levels(pf.minus0.rec)<-level_order_pf
 
 level_order_pure<-c("20","19","12","5","17","9","8","14","15","7","11","2","18","4","16","10","1","13","3","0","6")
 levels(fl.minus0)<-level_order_pure
-
+levels(fl.top100)<-level_order_pure
 
 library(reshape2)
 library(corrplot)
 
+umaps<-plot_grid(Dimminus01, nrow = 2, ncol = 2)
+umaps
 
-########Correlation plots to show cluster correspondance
+########This is the one I wanted
 
 library(corrplot)
-flmarkers.cfpf<-merge(cf.top100,pf.top100, by.x="gene", by.y="gene")
 
-corr_plot1<-corrplot(table(DS1=flmarkers.cfpf$cluster.x,DS2=flmarkers.cfpf$cluster.y),is.corr=F,addCoef.col="grey")
-
-level_order_cf<-c("18","15","9","2","8","11","14","16","6","4","3","12","0","17","13","7","10","1","5") #good order translate to velo
+level_order_cf<-c("18","2","9","19","8","10","14","15","6","16","4","3","12","0","17","7","11","13","1","5")
 levels(cf.minus0.rec)<-level_order_cf
+levels(cf.top100)<-level_order_cf
 
-level_order_pf<-c("16","18","17","14","4","19","11", "10", "15", "9","12","2","3","13","1","5","6","7","0","8") #good order good in  velo
-
+level_order_pf<-c("19","17","4","14","16","18","11", "10", "15", "9","12","2","3","13","1","5","6","7","0","8") #good order good in  velo
 levels(pf.minus0.rec)<-level_order_pf
+levels(pf.top100)<-level_order_pf
+
+level_order_pure<-c("20","19","17","15","12","5","9","8","14","7","11","2","4","18","16","10","1","13","3","0","6")
+levels(fl.minus0)<-level_order_pure
+levels(fl.top100)<-level_order_pure
 
 flmarkers.cfpure<-merge(cf.top100,fl.top100, by.x="gene", by.y="gene")
-corr_plot2<-corrplot(table(DS1=flmarkers.cfpure$cluster.x,DS2=flmarkers.cfpure$cluster.y),is.corr=F,addCoef.col="grey")
+flmarkers.cfpure$cluster.x <- factor(as.character(flmarkers.cfpure$cluster.x), levels = level_order_cf)
+flmarkers.cfpure$cluster.y <- factor(as.character(flmarkers.cfpure$cluster.y), levels = level_order_pure)
+mat <- table(DS1 = flmarkers.cfpure$cluster.x, DS2 = flmarkers.cfpure$cluster.y)
+mat <- mat[level_order_cf, level_order_pure, drop = FALSE]
+
+corr_plot2<-corrplot(mat,is.corr=F,
+                     method = 'color',
+                     number.digits = 0, addCoef.col  = "black")
 
 flmarkers.pfpure<-merge(pf.top100,fl.top100, by.x="gene", by.y="gene")
-corr_plot3<-corrplot(table(DS1=flmarkers.pfpure$cluster.x,DS2=flmarkers.pfpure$cluster.y),is.corr=F,addCoef.col="grey")
+flmarkers.pfpure$cluster.x <- factor(as.character(flmarkers.pfpure$cluster.x), levels = level_order_pf)
+flmarkers.pfpure$cluster.y <- factor(as.character(flmarkers.pfpure$cluster.y), levels = level_order_pure)
+mat2 <- table(DS1 = flmarkers.pfpure$cluster.x, DS2 = flmarkers.pfpure$cluster.y)
+mat2 <- mat2[level_order_pf, level_order_pure, drop = FALSE]
 
 
-flmarkers.minusSOMpure<-merge(minusSOM.top100,fl.top100, by.x="gene", by.y="gene")
-corr_plot4<-corrplot(table(DS1=flmarkers.minusSOMpure$cluster.x,DS2=flmarkers.minusSOMpure$cluster.y),is.corr=F,addCoef.col="grey")
+corr_plot3<-corrplot(mat2,is.corr=F,
+                     method = 'color',
+                     number.digits = 0,
+                     addCoef.col  = "black")
+
+
+flmarkers.cfpf<-merge(cf.markers_signif,pf.markers_signif, by.x="gene", by.y="gene")
+flmarkers.cfpf$cluster.x <- factor(as.character(flmarkers.cfpf$cluster.x), levels = level_order_cf)
+flmarkers.cfpf$cluster.y <- factor(as.character(flmarkers.cfpf$cluster.y), levels = level_order_pf)
+mat3 <- table(DS1 = flmarkers.cfpf$cluster.x, DS2 = flmarkers.cfpf$cluster.y)
+mat3 <- mat3[level_order_cf, level_order_pf, drop = FALSE]
+
+corr_plot4<-corrplot(mat3,is.corr=F,
+                     method = 'color',
+                     number.digits = 0)
+
+library(patchwork)
+library(ggplotify)
+
+corrplot2<-ggplotify::as.ggplot(~corrplot(mat,is.corr=F,
+                     method = 'color',
+                     number.digits = 0, addCoef.col  = "black"))
+
+corrplot3<-ggplotify::as.ggplot(~corrplot(mat2,is.corr=F,
+                     method = 'color',
+                     number.digits = 0,
+                     addCoef.col  = "black"))
+
+corrplot4<-ggplotify::as.ggplot(~corrplot(mat3,is.corr=F,
+                     method = 'color',
+                     number.digits = 0))
+#plots
+Dimminus02|corrplot2
+Dimminus03|corrplot3
+
+(Dimminus02|corrplot2)/(Dimminus03|corrplot3)
+(Dimminus02/Dimminus03)|corrplot4
 
 level_order_pure<-c("20","19","17","15","12","5","9","8","14","7","11","2","4","18","16","10","1","13","3","0","6")
 levels(fl.minus0)<-level_order_pure
@@ -140,10 +197,11 @@ fl.top10 <- arrange(fl.top10, cluster)
 
 all.genes <- rownames(fl.minus0)
 heatmap <- ScaleData(fl.minus0, features = all.genes)
-Heatmap<-DoHeatmap(heatmap, features = fl.top10$gene) + theme(axis.text.y = element_text(size =2))
-Heatmap + scale_fill_gradient2(low = "navy", mid = "white",high = "red") +NoLegend()
+Heatmap<-DoHeatmap(heatmap, features = fl.top10$gene) + theme(axis.text.y = element_text(size =2), axis.text.x = element_text(size=6))
+all_heat<-Heatmap + scale_fill_gradient2(low = "navy", mid = "white",high = "red") +NoLegend()
 
 m<-fl.combined.markers%>%group_by(cluster)%>%summarise(n = n())
+
 m
 
 ```
@@ -157,15 +215,13 @@ df=data.frame(cluster=Idents(fl.minus0), dataset=fl.minus0$"individual")
 per <- df  %>%  group_by(cluster) %>% 
   dplyr::count(dataset) %>% 
   ungroup()
-#write.csv(per, file = "/Users/carosegami/Dropbox/Re-re-analysisSC1/MBE-Rev/Analysis_combinedDS1DS2/Tables/number_cells_perclus_ind.csv")
+#write.csv(per, file = "number_cells_perclus_ind.csv")
 p<-ggplot(data=per, aes(x=cluster, y=n, fill=dataset)) +
-  geom_bar(position="fill", stat="identity")+ labs(y = "Percent") +  scale_y_continuous(labels = scales::percent) + scale_fill_grey(start = 0.3,
-  end = 0.8) + theme_classic()
+  geom_bar(position="fill", stat="identity")+ labs(y = "Percent") +  scale_y_continuous(labels = scales::percent) + scale_fill_viridis(discrete = TRUE, option = "H") + theme_classic()
 p
 
 pp<-ggplot(data=per, aes(x=cluster, y=n, fill=dataset)) +
-  geom_bar( stat="identity")+ labs(y = "Count") + scale_fill_grey(start = 0.2,
-  end = 0.6) + theme_classic()
+  geom_bar( stat="identity")+ labs(y = "Count") + scale_fill_viridis(discrete = TRUE, option = "H") + theme_classic()
 
 pp
 
@@ -325,13 +381,19 @@ c20.m$cluster<-20
 c20.m<-tibble::rownames_to_column(c20.m, "Gene_name")
 top10_markers_roc<-bind_rows(df1,df2,df3,df4,df5,df6,df7,df8,df9,df10,df11,df12,
                         df13,df14,df15,df16,df17,df18,df19,df20)
-#write.csv(top10_markers_roc,file = "../Analysis_combinedDS1DS2/Tables/top10markers_roc_pure.csv")
+#write.csv(top10_markers_roc,file = "top10markers_roc_pure.csv")
 
 All_rocmarkers<-bind_rows(c0.m,c1.m,c2.m,c3.m,c4.m,c5.m,c6.m,c7.m,c8.m,c9.m,c10.m,c11.m,c12.m,c13.m,c14.m,c15.m,c16.m,c17.m,c18.m,c19.m,c20.m)
-#write.csv(All_rocmarkers,file = "../Analysis_combinedDS1DS2/Tables/All_rocmarkers_pure.csv")
-All_rocmarkers<-read.csv(file="../Analysis_combinedDS1DS2/Tables/All_rocmarkers_pure.csv",sep=",")
+#write.csv(All_rocmarkers,file = "All_rocmarkers_pure.csv")
+All_rocmarkers<-read.csv(file="All_rocmarkers_pure.csv",sep=",")
+
+All_rocmarkers<-merge(All_rocmarkers, NewAnn2, by.x="Gene_name", by.y="V2", all.x=T, all.y=F)
+
+write.csv(All_rocmarkers,file = "All_rocmarkers_pure.csv")
 
 rep_markers<-filter(All_rocmarkers, myAUC>0.85)
+rep_markers<-rep_markers %>% 
+  arrange(X) 
 top10_rep<-rep_markers%>%group_by(cluster)%>%top_n(10,myAUC)
 top2_rep<-rep_markers%>%group_by(cluster)%>%top_n(2,myAUC)
 
@@ -346,7 +408,7 @@ bm <- arrange(bm, cluster)
 bm<-bm%>%ungroup(cluster)%>%distinct(Gene_name)
 
 bestmarkers<-DotPlot(fl.minus0, features = bm$Gene_name, cols = c("blue","red"), dot.scale = 8) + RotatedAxis()
-bestmarkers + NoLegend()
+best_noL<-bestmarkers + NoLegend() +xlab("Gene names")+ylab("Cluster") + theme(axis.text.x = element_text(size=7), axis.text.y = element_text(size=7))
 
 ```
 
@@ -370,8 +432,8 @@ fl.combined.sct_sp<-AddMetaData(fl.minus0,samples_name$samples_name, col.name = 
 ##from now on new db name!
 
 ###Load more info on genes
-positions<-read.table("../full.genes.on.fAlb15.chromPos_strict.from_gtf.bed", sep = "\t")
-genes <- read.table("../features.tsv.gz", stringsAsFactors = FALSE)
+positions<-read.table("full.genes.on.fAlb15.chromPos_strict.from_gtf.bed", sep = "\t")
+genes <- read.table("filtered_feature_bc_matrix_CF1/features.tsv.gz", stringsAsFactors = FALSE)
 genes<-genes%>%select(V1,V2)%>%distinct(V2, .keep_all = T)
 
 
@@ -380,7 +442,7 @@ genes<-genes%>%select(V1,V2)%>%distinct(V2, .keep_all = T)
 ##Add ensembl id and cut significance
 fl.markers<-merge(fl.combined.markers,genes, by.x = "gene", by.y = "V2", all.x = T, all.y = F)
 fl.markers.signif<-filter(fl.markers,p_val_adj<0.05)
-#write.csv(fl.markers.signif,file = "../Analysis_combinedDS1DS2/Tables/fl.markers-pure.signif.csv")
+#write.csv(fl.markers.signif,file = "fl.markers-pure.signif.csv")
 ```
 
 ##DE analysis between cf and pf
@@ -497,14 +559,18 @@ Now plot DE mean and se and proportions
 ```{r plotDE}
 
 clusdiffresponse_wilcox_adj<-filter(clusdiffresponse_wilcox, p_val_adj<0.05)
-#write.csv(clusdiffresponse_wilcox_adj,file = "../Analysis_combinedDS1DS2/Tables/DEwilcox_cfpf_significant.csv")
+#write.csv(clusdiffresponse_wilcox_adj,file = "DEwilcox_cfpf_significant.csv")
 
-clusdiffresponse_wilcox_adj<-read.csv(file = "../Analysis_combinedDS1DS2/Tables/DEwilcox_cfpf_significant.csv")
+#clusdiffresponse_wilcox_adj<-read.csv(file = "DEwilcox_cfpf_significant.csv")
 
-Diff_genes_GO<-distinct(clusdiffresponse_wilcox_adj, V1)
-#write.csv(Diff_genes_GO, file="../Analysis_combinedDS1DS2/Tables/list_allDEids.csv")
+Diff_genes_GO<-distinct(clusdiffresponse_wilcox_adj, genes)
+Diff_genes_GO<-merge(Diff_genes_GO, NewAnn2, by.x="genes", by.y="V2", all.x=T, all.y=F)
+write.csv(Diff_genes_GO, file="list_allDEids.csv")
+Diff_genes_GO_perCluster<-select(clusdiffresponse_wilcox_adj, genes,cluster)
+Diff_genes_GO_perCluster<-merge(Diff_genes_GO_perCluster,NewAnn2, by.x="genes", by.y="V2", all.x=T, all.y=F)
+#write.csv(Diff_genes_GO_perCluster,file = "Diff_genes_GO_perClus.csv")
 
-Diff_genes_GO<-read.csv("../Analysis_combinedDS1DS2/Tables/list_allDEids.csv")
+#Diff_genes_GO<-read.csv("list_allDEids.csv")
 
 ##default method
 wilcoxadj_diff21<-ggplot(clusdiffresponse_wilcox_adj, aes(x= factor(cluster, level = level_order_pure ), y= avg_log2FC, colour=Z )) + stat_summary(size=0.8)+geom_quasirandom(alpha=1/30)
@@ -532,28 +598,28 @@ propDE_Z<-clusdiffresponse_wilcox_adj_noMT%>%group_by(cluster,Z)%>%summarise(n =
 num_wilcoxgenes<-clusdiffresponse_wilcox%>%group_by(cluster,Z)%>%summarise(n=n())
 num_wilcoxgenes<-filter(num_wilcoxgenes,Z!="MT-NA")
 
-totalgenes<-c("3688","3688","4941","4941","8225","8225","7230","7230","6899","6899",
-              "6829","6829","6346","6346","6585","6585","6908","6908","6448","6448",
-              "7398","7398","5712","5712","5912","5912","7352","7352","6424","6424",
-              "7119","7119","5945","5945","5665","5665","5860","5860","5503","5503",
-              "5606","5606")
+totalgenes<-c("3688","3688","4941","4941","6899","6899","6829","6829","8225","8225",
+              "6346","6346","6585","6585","6908","6908",
+              "6830","6830","6448","6448","7398","7398","5712","5712","7352","7352","5912","5912","6424","6424",
+              "7119","7119","5945","5945","5665","5665","5860","5860","5503","5503", "5606","5606")
+             
   
 #totalgenes<-c("2152","2152","754","754","1169","1169","1157","1157","762","762","872","872","1325","1325","733","733",
 #"553","553","1818","1818","1756","1756","618","618","539","539","546","546","1105","1105","565","565",
 #"771","771","548","548","1033","1033","694","694")
 
 stage<-c("somatic","somatic","somatic","somatic","somatic","somatic","somatic","somatic",
-         "somatic","somatic","somatic","somatic",
+         "somatic","somatic",
          "spermatogonia","spermatogonia","spermatogonia","spermatogonia",
          "meiosis","meiosis","meiosis","meiosis","meiosis","meiosis","meiosis","meiosis",
-         "meiosis","meiosis","meiosis","meiosis","meiosis","meiosis",
+         "meiosis","meiosis","meiosis","meiosis","meiosis","meiosis","meiosis","meiosis",
          "spermatid","spermatid","spermatid","spermatid","spermatid","spermatid",
          "spermatid","spermatid","spermatid","spermatid","spermatid","spermatid")
 
 prop_DEgenes<-as.data.frame(stage)
 
-cluster<-c("20","20","19","19","17","17","15","15","12","12","5","5","9","9","8","8",
-           "14","14","7","7","11","11","2","2","4","4","18","18","16","16","10","10",
+cluster<-c("20","20","19","19","12","12","5","5","17","17","9","9","8","8",
+           "14","14","15","15","7","7","11","11","2","2","18","18","4","4","16","16","10","10",
            "1","1","13","13","3","3","0","0","6","6")
 
 prop_DEgenes$cluster<-cluster
@@ -564,8 +630,8 @@ chromosome<-c("A","Z","A","Z","A","Z","A","Z","A","Z","A","Z","A","Z","A","Z","A
 
 prop_DEgenes$chromosome<-chromosome
 
-nDE<-c("0","0","1","0","3","0","2","0","4","0","36","1","4","0","33","4","1","0","46","3",
-       "82","2","66","4","77","7","87","6","2","2","345","19","273","19","21","2","194","14",
+nDE<-c("0","0","1","0","4","0","36","1","3","0","4","0","33","4","1","0","2","0","46","3",
+       "82","2","66","4","87","6","77","7","2","2","345","19","273","19","21","2","194","14",
        "369","26","146","10")
 
 prop_DEgenes$nDE<-as.numeric(nDE)
@@ -587,8 +653,8 @@ DEplot2
 
 ############GLM 
 
-DEtotal<-c("0","0","1","1","3","3","2","2","4","4","37","37","4","4","37","37","1","1",
-           "49","49","84","84","70","70","84","84","93","93","4","4","364","364","292","292",
+DEtotal<-c("0","0","1","1","4","4","37","37","3","3","4","4","37","37","1","1","2","2",
+           "49","49","84","84","70","70","93","93","84","84","4","4","364","364","292","292",
            "23","23","208","208","395","395","156","156")
 
 #DEtotal taking into account DE genes that are mapped but need to create another variable for total DEgenes
@@ -1154,7 +1220,12 @@ avg.cells.all2$Z<-avg.cells.all2$V1.y
 avg.cells.all2$Z<-"A"
 avg.cells.all2$Z[avg.cells.all2$V1.y=="ChrZ"]<-"Z"
 
-#write.csv(avg.cells.all2,file = "../Analysis_combinedDS1DS2/Tables/avg_exppure.csv")
+avgexp_newann<-merge(avg.cells.all2, NewAnn2, by.x="gene", by.y="V2", all.x=T, all.y=F)
+avgexp_newann<-na.omit(avgexp_newann)
+expmore0<-avgexp_newann%>%
+  filter(all>0.01)
+write.csv(expmore0, file = "exp_genes.csv")
+#write.csv(avg.cells.all2,file = "avg_exppure.csv")
 
 avg.cells.all2noNA<-na.omit(avg.cells.all2)
 
@@ -1165,12 +1236,12 @@ avg.cells.all2noNA_F<-filter(avg.cells.all2noNA, all>0.01)
 avg.cells.more0<-filter(avg.cells.all2noNA, all>0)
 
 avg.top500<- avg.cells.all2noNA %>% group_by(cluster) %>% top_n(n = 500, wt = all)
-#write.csv(avg.cells.all2,file = "../Analysis_combinedDS1DS2/Tables/avg_top500pure.csv")
+#write.csv(avg.cells.all2,file = "avg_top500pure.csv")
 
 Zavg.top500<- filter(avg.top500, Z=="Z")
 
 avg.top1000<- avg.cells.all2noNA%>%group_by(cluster)%>%top_n(n=1000,wt=all)
-#write.csv(avg.cells.all2,file = "../Analysis_combinedDS1DS2/Tables/avg_top1000.csv")
+#write.csv(avg.cells.all2,file = "avg_top1000.csv")
 
 ###Zplot of top 500
 
@@ -1263,7 +1334,7 @@ plot_grid(Prop2, Prop3, labels = c("A","B"))
 
 ```{r bootstrap_graphs}
 
-###Here Marie will put the awesome code with multiple for loops to perform bootstrap resampling for the average expression graphs.
+###Here we do bootstrap resampling for the average expression graphs.
 library(data.table)
 library(reshape2)
 
@@ -1290,7 +1361,7 @@ avg.clus.cells<-select(avg.clus.cells, V1, Row.names, "0","1","2","3","4","5","6
                       "11","12","13","14","15","16","17","18","19","20",V1.y)
 
 avg.clus.cells2 <- melt(setDT(avg.clus.cells), id.vars = c("V1","Row.names","V1.y"), variable.name = "cluster")
-#write.csv(avg.clus.cells2,file = "../Analysis_combinedDS1DS2/Tables/avgexp_all_a.csv")
+#write.csv(avg.clus.cells2,file = "avgexp_all_a.csv")
  
 avg.clus.cells2$chr="A"
 avg.clus.cells2$chr[avg.clus.cells2$V1.y=="ChrZ"]="Z"
@@ -1305,7 +1376,7 @@ longdfexp$value<-longdfexp$value*10000
 #
 #
 longdfexp_top500<- longdfexp %>% group_by(cluster) %>% top_n(n = 500, wt = value)
-#write.csv(longdfexp_top500,file = "../Analysis_combinedDS1DS2/Tables/Top500_expressed.csv")
+#write.csv(longdfexp_top500,file = "Top500_expressed.csv")
 longdfexp_more0<- longdfexp %>% filter(value > 0) 
 
 #bootstraping
@@ -1413,6 +1484,16 @@ phyper((28-1),590,13630,500, lower.tail = F) # p=0.06618954
 #cluster 20
 phyper((22-1),590,13630,500, lower.tail = F) # p=0.4192847
 
+###pval correction
+
+p2<-c(0.7661754,0.4192847,0.5093431,0.687296,0.4192847,0.06618954,0.6002477,0.3344532,0.005821254,0.0275343,0.6002477,0.3344532,0.09773867,0.3344532,0.193094,0.5093431,0.1396615,0.4192847,0.7661754,0.06618954,0.4192847)
+
+#Trying different methods
+p.adjust(p2, method = "bonferroni", 21)
+p.adjust(p2, method = "holm", 21) 
+
+
+
 ######################Same for exp > 0
 #phyper(ZDE-1,totalZ,totalA,totalDE, lower.tail = F)
 
@@ -1469,7 +1550,7 @@ phyper((180-1),590,13630,(3990+180), lower.tail = F) # p=0.2734098
 #DNDS
 ######################################################
 
-dnds<-read.table("../dNdS_Fice_3spalignment_frm_unfiltered.txt", 
+dnds<-read.table("/Users/carosegami/Downloads/dNdS_Fice_3spalignment_frm_unfiltered.txt", 
                  sep = "\t", header = T)
 dnds<-select(dnds, gene_id, dN_Fice, dS_Fice)
 dnds$dnds=dnds$dN_Fice/dnds$dS_Fice
@@ -1497,7 +1578,7 @@ longdnds<-na.omit(longdnds)
 
 longdnds_top<- longdnds %>% group_by(cluster) %>% top_n(n = 500, wt = value)
 #bootstraping
-#write.csv(longdnds_top, file="../Analysis_combinedDS1DS2/Tables/top500genespercluster.csv")
+#write.csv(longdnds_top, file="top500genespercluster.csv")
 ### top 500 genes per cluster without splitting Z and A
 
 #bootstraping
@@ -1585,22 +1666,28 @@ Fig6
 ```
 
 ```{r marker_comparison}
-Mouse <- read.table("../Fig_1A_Mouse_unselected_Hermann2018.csv", sep = ",", header = T)
-Human <- read.table("../Fig_1B_Human_unselected_Hermann2018.csv", sep = ",", header = T)
-Mouse<- mutate_all(Mouse, .funs=toupper)
+Mouse <- read.table("Fig_1A_Mouse_unselected_Hermann2018.csv", sep = ",", header = T)
+Human <- read.table("THE_FINAL_CLUSTERS/Fig_1B_Human_unselected_Hermann2018.csv", sep = ",", header = T)
 
+Mouse$cluster<-as.factor(Mouse$cluster)
+Human<-Human%>%
+  filter(p_val_adj<0.05)
+Mouse<-Mouse%>%
+  filter(p_val_adj<0.05)
+Mouse <- Mouse %>%
+  mutate(gene = toupper(as.character(gene)))
 ####add stages info to all markers df
 ##flycatcher
 ################Stages corresponding to clusters
 cluster<-level_order_pure
 stage<-c("somatic","somatic","somatic", "somatic","somatic","somatic",
          "spermatogonia","spermatogonia",
-         "meiosis","meiosis","meiosis", "meiosis", "meiosis", "meiosis",
-         "elongating", "elongating","elongating", "elongating","elongating", "elongating",
-         "elongating")
+         "meiosis","meiosis","meiosis", "meiosis", "meiosis", "meiosis","meiosis",
+         "elongating", "elongating","elongating", "elongating","elongating", "elongating")
 stages<-cbind(cluster,stage)
 stages<-as.data.frame(stages)
-fl.markers<-merge(fl.markers,stages, by.x = "cluster", by.y = "cluster")
+fl.markers<-merge(Mfl.markers.signif,stages, by.x = "cluster", by.y = "cluster")
+fl.markers$stage<-as.factor(fl.markers$stage)
 ##Human
 
 clusterH<-c('8', '6', '10', '7', '14', '9', '12', '3','11', '2', '13', '5', '4',
@@ -1629,8 +1716,8 @@ Mouse<-merge(Mouse,stagesM, by.x = "cluster", by.y = "clusterM", all = T)
 ###################unique markers per stage
 
 fly_stage<- fl.markers %>% group_by(stage) %>% arrange(avg_log2FC)%>%distinct(gene, .keep_all = T)
+fly_stage<-na.omit(fly_stage)
 mou_stage<-Mouse %>% group_by(stageM) %>% arrange(avg_logFC) %>% distinct(gene, .keep_all = T)
-
 hum_stage<-Human %>% group_by(stageH) %>% arrange(avg_logFC) %>% distinct(gene, .keep_all = T)
 ```
 
@@ -1651,26 +1738,59 @@ mou_spermatogonia<-mou_stage%>%filter(stageM=="spermatogonia")
 
 
 spermatogoniaV <- list(
-  fly=fly_spermatogonia$gene,
+  fly=fly_spermatogonia$gene_name,
   hum=hum_spermatogonia$gene,
   mou=mou_spermatogonia$gene)
 
 
 Spe_V<-ggVennDiagram(spermatogoniaV)
 
+# Clean first: unique + drop NAs to match venn tools' counting
+sets_spe <- lapply(spermatogoniaV, \(x) unique(na.omit(x)))
+fly1 <- sets_spe$fly 
+hum1 <- sets_spe$hum 
+mou1 <- sets_spe$mou
+
+# “z only” = fly only (in fly, not in mou or hum)
+fly1_only <- setdiff(fly1, union(mou1, hum1))
+writeLines(fly1_only, "spermatogonia_fly_only.txt")
+shared_all <- Reduce(intersect, list(fly1, hum1, mou1))
+writeLines(shared_all, "spermatogonia_shared_all.txt")
+shared_hummou <- setdiff(intersect(mou1,hum1), fly1)
+writeLines(shared_hummou, "spermatogonia_shared_hummou.txt")
+humplusmouminusfly <- setdiff(union(mou1,hum1), fly1)
+writeLines(humplusmouminusfly, "hummouminusfly.txt")
 
 fly_meiosis<-fly_stage%>%filter(stage=="meiosis")
 hum_meiosis<-hum_stage%>%filter(stageH=="meiosis")
 mou_meiosis<-mou_stage%>%filter(stageM=="meiosis")
 
+write.csv(fly_meiosis,"fly_meio_signif_markers.csv")
 
 meio <- list(
-  fly=fly_meiosis$gene,
+  fly=fly_meiosis$gene_name,
   hum=hum_meiosis$gene,
   mou=mou_meiosis$gene)
 
 
 meio_V<-ggVennDiagram(meio)
+
+# Clean first: unique + drop NAs to match venn tools' counting
+sets_meio <- lapply(meio, \(x) unique(na.omit(x)))
+fly2 <- sets_meio$fly 
+hum2 <- sets_meio$hum 
+mou2 <- sets_meio$mou
+
+# “z only” = fly only (in fly, not in mou or hum)
+fly2_only <- setdiff(fly2, union(mou2, hum2))
+writeLines(fly2_only, "meio_fly_only.txt")
+shared_all2 <- Reduce(intersect, list(fly2, hum2, mou2))
+writeLines(shared_all2, "meio_shared_all.txt")
+shared_hummou2 <- setdiff(intersect(mou2,hum2), fly2)
+writeLines(shared_hummou2, "meio_shared_hummou.txt")
+humplusmouminusfly2 <- setdiff(union(mou2,hum2), fly2)
+writeLines(humplusmouminusfly2, "meio_hummouminusfly.txt")
+
 
 
 fly_elongating<-fly_stage%>%filter(stage=="elongating")
@@ -1679,12 +1799,29 @@ mou_elongating<-mou_stage%>%filter(stageM=="elongating")
 
 
 elo <- list(
-  fly=fly_elongating$gene,
+  fly=fly_elongating$gene_name,
   hum=hum_elongating$gene,
   mou=mou_elongating$gene)
 
 
 elo_V<-ggVennDiagram(elo)
+
+# Clean first: unique + drop NAs to match venn tools' counting
+sets_elo <- lapply(elo, \(x) unique(na.omit(x)))
+fly3 <- sets_elo$fly 
+hum3 <- sets_elo$hum 
+mou3 <- sets_elo$mou
+
+# “z only” = fly only (in fly, not in mou or hum)
+fly3_only <- setdiff(fly3, union(mou3, hum3))
+writeLines(fly3_only, "elo_fly_only.txt")
+shared_all3 <- Reduce(intersect, list(fly3, hum3, mou3))
+writeLines(shared_all3, "elo_shared_all.txt")
+shared_hummou3 <- setdiff(intersect(mou3,hum3), fly3)
+writeLines(shared_hummou3, "elo_shared_hummou.txt")
+humplusmouminusfly3 <- setdiff(union(mou3,hum3), fly3)
+writeLines(humplusmouminusfly3, "meio_hummouminusfly.txt")
+
 
 
 fly_somatic<-fly_stage%>%filter(stage=="somatic")
@@ -1693,7 +1830,7 @@ mou_somatic<-mou_stage%>%filter(stageM=="somatic")
 
 
 som <- list(
-  fly=fly_somatic$gene,
+  fly=fly_somatic$gene_name,
   hum=hum_somatic$gene,
   mou=mou_somatic$gene)
 
@@ -1705,13 +1842,13 @@ plot_grid(Spe_V,meio_V,elo_V          )
 ######Trial BioVenn
 library("BioVenn")
 
-biovenn_spermatogonia <- draw.venn(fly_spermatogonia$gene, hum_spermatogonia$gene, 
+biovenn_spermatogonia <- draw.venn(fly_spermatogonia$gene_name, hum_spermatogonia$gene, 
                                    mou_spermatogonia$gene, subtitle="Spermatogonia", nrtype="abs")
 
-biovenn_meiosis <- draw.venn(fly_meiosis$gene, hum_meiosis$gene, 
+biovenn_meiosis <- draw.venn(fly_meiosis$gene_name, hum_meiosis$gene, 
                                    mou_meiosis$gene, subtitle="Spermatocytes", nrtype="abs")
 
-biovenn_elongating <- draw.venn(fly_elongating$gene, hum_elongating$gene, 
+biovenn_elongating <- draw.venn(fly_elongating$gene_name, hum_elongating$gene, 
                                    mou_elongating$gene, subtitle="Spermatids", nrtype="abs")
 
 ###Export independently
@@ -1719,7 +1856,7 @@ biovenn_elongating <- draw.venn(fly_elongating$gene, hum_elongating$gene,
 
 ```{chisq_r}
 
-x<-as.table(rbind(c(1259, 1124), c(1369,2101), c(826,1566)))
+x<-as.table(rbind(c(1387, 849), c(1745,1918), c(568,767)))
 dimnames(x)<-list(stages=c("spermatogonia","meiosis","spermatid"),
                   markers=c("shared", "private"))
             
@@ -1733,4 +1870,162 @@ chisq.posthoc.test::chisq.posthoc.test(x, method = "bonferroni")
 
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# New Venn Diagram between CF and PF
+
+```{r}
+
+level_order_cf<-c("18","2","9","8","11","14","16","6","15","4","3","12","0","17","7","10","13","1","5") #good order translate to velo
+level_order_pf<-c("19","17","16","18","14","4","11", "10", "15", "9","12","2","3","13","1","5","6","7","0","8") #good order good in  velo
+
+cf.markers_signif<-cf.markers %>%
+  filter(p_val_adj<0.05)
+cf.markers_signif<-merge(cf.markers_signif,NewAnn2, by.x="gene",by.y="V2", all.x=T, all.y=F)
+cf.markers_signif<-na.omit(cf.markers_signif)
+
+pf.markers_signif<-pf.markers %>%
+  filter(p_val_adj<0.05)
+pf.markers_signif<-merge(pf.markers_signif,NewAnn2, by.x="gene",by.y="V2", all.x=T, all.y=F)
+pf.markers_signif<-na.omit(pf.markers_signif)
+
+cluster_cf<-c("18","2","9","8","11","14","16","6","15","4","3","12","0","17","7","10","13","1","5") 
+stage_cf<-c("somatic","somatic","somatic","spermatogonia","spermatogonia",
+            "meiosis","meiosis", "meiosis","meiosis","meiosis", "meiosis","meiosis",
+            "elongating", "elongating", "elongating","elongating","elongating","elongating","elongating")
+
+stages_cf<-cbind(cluster_cf,stage_cf)
+stages_cf<-as.data.frame(stages_cf)
+
+CF_forvenn<-merge(cf.markers_signif,stages_cf, by.x = "cluster", by.y = "cluster_cf", all = T)
+CF_forvenn$stage_cf<-as.factor(CF_forvenn$stage_cf)
+#PF
+
+cluster_pf<-c("19","17","16","18","14","4","11", "10", "15", "9","12","2","3","13","1","5","6","7","0","8")
+stage_pf<-c("somatic","somatic","somatic","somatic","somatic","somatic",
+            "spermatogonia","spermatogonia",
+            "meiosis","meiosis","meiosis","meiosis","meiosis","meiosis",
+            "elongating","elongating","elongating","elongating","elongating","elongating")
+
+stages_pf<-cbind(cluster_pf,stage_pf)
+stages_pf<-as.data.frame(stages_pf)
+
+PF_forvenn<-merge(pf.markers_signif,stages_pf, by.x = "cluster", by.y = "cluster_pf", all = T)
+PF_forvenn$stage_pf<-as.factor(PF_forvenn$stage_pf)
+
+CF_forvenn<- CF_forvenn %>% group_by(stage_cf) %>% arrange(avg_log2FC)%>%distinct(gene, .keep_all = T)
+PF_forvenn<- PF_forvenn %>% group_by(stage_pf) %>% arrange(avg_log2FC) %>% distinct(gene, .keep_all = T)
+
+cf_spermatogonia<-CF_forvenn%>%filter(stage_cf=="spermatogonia")
+pf_spermatogonia<-PF_forvenn%>%filter(stage_pf=="spermatogonia")
+
+cf_meiosis<-CF_forvenn%>%filter(stage_cf=="meiosis")
+pf_meiosis<-PF_forvenn%>%filter(stage_pf=="meiosis")
+
+cf_elongating<-CF_forvenn%>%filter(stage_cf=="elongating")
+pf_elongating<-PF_forvenn%>%filter(stage_pf=="elongating")
+
+###################unique markers per stage
+
+spermatogonia_cfpfV <- list(
+  CF=cf_spermatogonia$gene_name,
+  PF=pf_spermatogonia$gene_name)
+
+spermatogonia_cfpfVenn<-ggVennDiagram(spermatogonia_cfpfV)
+spermatogonia_cfpfVenn
+
+meiosis_cfpfV <- list(
+  CF=cf_meiosis$gene_name,
+  PF=pf_meiosis$gene_name)
+
+meiosis_cfpfVenn<-ggVennDiagram(meiosis_cfpfV)
+meiosis_cfpfVenn
+
+elongating_cfpfV <- list(
+  CF=cf_elongating$gene_name,
+  PF=pf_elongating$gene_name)
+
+elongating_cfpfVenn<-ggVennDiagram(elongating_cfpfV)
+elongating_cfpfVenn
+
+spermatogonia_cfpfVenn|meiosis_cfpfVenn|elongating_cfpfVenn
+
+```
+
+Now the same but only with top 100 markers
+
+```{r}
+
+cf.markerstop100_signif<-cf.top100 %>%
+  filter(p_val_adj<0.05)
+cf.markerstop100_signif<-merge(cf.markerstop100_signif,NewAnn2, by.x="gene",by.y="V2", all.x=T, all.y=F)
+cf.markerstop100_signif<-na.omit(cf.markerstop100_signif)
+
+pf.markerstop100_signif<-pf.top100 %>%
+  filter(p_val_adj<0.05)
+pf.markerstop100_signif<-merge(pf.markerstop100_signif,NewAnn2, by.x="gene",by.y="V2", all.x=T, all.y=F)
+pf.markerstop100_signif<-na.omit(pf.markerstop100_signif)
+
+cluster_cf<-c("18","2","9","8","11","14","16","6","15","4","3","12","0","17","7","10","13","1","5") 
+stage_cf<-c("somatic","somatic","somatic","spermatogonia","spermatogonia",
+            "meiosis","meiosis", "meiosis","meiosis","meiosis", "meiosis","meiosis",
+            "elongating", "elongating", "elongating","elongating","elongating","elongating","elongating")
+
+stages_cf<-cbind(cluster_cf,stage_cf)
+stages_cf<-as.data.frame(stages_cf)
+
+CF_forvenn<-merge(cf.markerstop100_signif,stages_cf, by.x = "cluster", by.y = "cluster_cf", all = T)
+CF_forvenn$stage_cf<-as.factor(CF_forvenn$stage_cf)
+#PF
+
+cluster_pf<-c("19","17","16","18","14","4","11", "10", "15", "9","12","2","3","13","1","5","6","7","0","8")
+stage_pf<-c("somatic","somatic","somatic","somatic","somatic","somatic",
+            "spermatogonia","spermatogonia",
+            "meiosis","meiosis","meiosis","meiosis","meiosis","meiosis",
+            "elongating","elongating","elongating","elongating","elongating","elongating")
+
+stages_pf<-cbind(cluster_pf,stage_pf)
+stages_pf<-as.data.frame(stages_pf)
+
+PF_forvenn<-merge(pf.markerstop100_signif,stages_pf, by.x = "cluster", by.y = "cluster_pf", all = T)
+PF_forvenn$stage_pf<-as.factor(PF_forvenn$stage_pf)
+
+CF_forvenn<- CF_forvenn %>% group_by(stage_cf) %>% arrange(avg_log2FC)%>%distinct(gene, .keep_all = T)
+PF_forvenn<- PF_forvenn %>% group_by(stage_pf) %>% arrange(avg_log2FC) %>% distinct(gene, .keep_all = T)
+
+cf_spermatogonia<-CF_forvenn%>%filter(stage_cf=="spermatogonia")
+pf_spermatogonia<-PF_forvenn%>%filter(stage_pf=="spermatogonia")
+
+cf_meiosis<-CF_forvenn%>%filter(stage_cf=="meiosis")
+pf_meiosis<-PF_forvenn%>%filter(stage_pf=="meiosis")
+
+cf_elongating<-CF_forvenn%>%filter(stage_cf=="elongating")
+pf_elongating<-PF_forvenn%>%filter(stage_pf=="elongating")
+
+###################unique markers per stage
+
+spermatogonia_cfpfV <- list(
+  CF=cf_spermatogonia$gene_name,
+  PF=pf_spermatogonia$gene_name)
+
+spermatogonia_cfpfVenn<-ggVennDiagram(spermatogonia_cfpfV)
+spermatogonia_cfpfVenn
+
+meiosis_cfpfV <- list(
+  CF=cf_meiosis$gene_name,
+  PF=pf_meiosis$gene_name)
+
+meiosis_cfpfVenn<-ggVennDiagram(meiosis_cfpfV)
+meiosis_cfpfVenn
+
+elongating_cfpfV <- list(
+  CF=cf_elongating$gene_name,
+  PF=pf_elongating$gene_name)
+
+elongating_cfpfVenn<-ggVennDiagram(elongating_cfpfV)
+elongating_cfpfVenn
+
+spermatogonia_cfpfVenn|meiosis_cfpfVenn|elongating_cfpfVenn
+
+```
+
+
+
